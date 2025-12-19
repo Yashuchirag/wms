@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     container_name: wms-postgres
     environment:
-      POSTGRES_DB: wms_dev
-      POSTGRES_USER: wms_user
-      POSTGRES_PASSWORD: wms_password
+      POSTGRES_DB: wms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 274136
     ports:
       - "5432:5432"
     volumes:
@@ -28,9 +28,9 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:postgresql://postgres:5432/wms_dev
-      DB_USERNAME: wms_user
-      DB_PASSWORD: wms_password
+      DB_URL: jdbc:postgresql://postgres:5432/wms
+      DB_USERNAME: postgres
+      DB_PASSWORD: 274136
     ports:
       - "8080:8080"
     networks:

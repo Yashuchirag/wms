@@ -1,28 +1,32 @@
-CREATE TABLE items (
-                       id BIGSERIAL PRIMARY KEY,
-                       sku VARCHAR(100) NOT NULL UNIQUE,
-                       name VARCHAR(255) NOT NULL,
-                       description TEXT,
-                       category VARCHAR(100),
-                       price DECIMAL(10, 2),
-                       weight DOUBLE PRECISION,
-                       dimensions VARCHAR(100),
-                       turnover_rate INTEGER DEFAULT 0,
-                       priority VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
-                       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                       CONSTRAINT chk_item_priority CHECK (priority IN ('HIGH', 'MEDIUM', 'LOW'))
+CREATE TABLE inventory (
+                           id BIGSERIAL PRIMARY KEY,
+                           item_id BIGINT NOT NULL,
+                           warehouse_id BIGINT NOT NULL,
+                           zone_id BIGINT,
+                           quantity INTEGER NOT NULL DEFAULT 0,
+                           reserved_quantity INTEGER NOT NULL DEFAULT 0,
+                           available_quantity INTEGER NOT NULL DEFAULT 0,
+                           reorder_point INTEGER DEFAULT 10,
+                           last_stock_count TIMESTAMP,
+                           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           CONSTRAINT fk_inventory_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+                           CONSTRAINT fk_inventory_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE CASCADE,
+                           CONSTRAINT fk_inventory_zone FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE SET NULL,
+                           CONSTRAINT uq_inventory_item_warehouse_zone UNIQUE (item_id, warehouse_id, zone_id),
+                           CONSTRAINT chk_quantity_positive CHECK (quantity >= 0),
+                           CONSTRAINT chk_reserved_positive CHECK (reserved_quantity >= 0)
 );
 
-CREATE INDEX idx_item_sku ON items(sku);
-CREATE INDEX idx_item_category ON items(category);
-CREATE INDEX idx_item_priority ON items(priority);
-CREATE INDEX idx_item_turnover ON items(turnover_rate);
+CREATE INDEX idx_inventory_item ON inventory(item_id);
+CREATE INDEX idx_inventory_warehouse ON inventory(warehouse_id);
+CREATE INDEX idx_inventory_zone ON inventory(zone_id);
+CREATE INDEX idx_inventory_available ON inventory(available_quantity);
 
--- Insert sample items
-INSERT INTO items (sku, name, description, category, price, weight, priority, turnover_rate) VALUES
-                                                                                                 ('SKU-001', 'Laptop Computer', 'High-performance laptop', 'Electronics', 999.99, 2.5, 'HIGH', 150),
-                                                                                                 ('SKU-002', 'Office Chair', 'Ergonomic office chair', 'Furniture', 299.99, 15.0, 'MEDIUM', 80),
-                                                                                                 ('SKU-003', 'Wireless Mouse', 'Bluetooth wireless mouse', 'Electronics', 29.99, 0.2, 'HIGH', 200),
-                                                                                                 ('SKU-004', 'Desk Lamp', 'LED desk lamp', 'Furniture', 49.99, 1.5, 'LOW', 45),
-                                                                                                 ('SKU-005', 'USB Cable', 'USB-C charging cable', 'Electronics', 9.99, 0.1, 'MEDIUM', 300);
+-- Insert sample inventory
+INSERT INTO inventory (item_id, warehouse_id, zone_id, quantity, reserved_quantity, available_quantity, reorder_point) VALUES
+                                                                                                                           (1, 1, 1, 100, 10, 90, 20),
+                                                                                                                           (2, 1, 2, 50, 5, 45, 10),
+                                                                                                                           (3, 1, 1, 200, 30, 170, 50),
+                                                                                                                           (4, 2, 4, 75, 0, 75, 15),
+                                                                                                                           (5, 2, 4, 500, 50, 450, 100);
