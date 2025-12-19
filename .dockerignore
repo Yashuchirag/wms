@@ -1,0 +1,38 @@
+# Ignore target folder (Maven build output)
+target/
+build/
+
+# Ignore IDE/editor files
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore Git files
+.git
+.gitignore
+
+# Ignore local environment files
+.env
+*.local
+
+# Ignore temporary files
+*.tmp
+*.swp
+*.bak
+
+# Ignore PostgreSQL data (if you have local db folder)
+data/
+*.sql
+
+# Ignore Maven wrapper files (optional if included in image)
+mvnw.cmd
+
+# Ignore node_modules (if frontend in project)
+node_modules/
