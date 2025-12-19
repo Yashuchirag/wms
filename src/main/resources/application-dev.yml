@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/wms_dev
-    username: wms_user
-    password: wms_password
+    url: jdbc:postgresql://localhost:5432/wms
+    username: postgres
+    password: 274136
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -13,10 +13,25 @@ spring:
 
   jpa:
     show-sql: true
+    hibernate:
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: true
 
+  # Flyway configuration for dev
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    clean-disabled: false  # Allow clean in dev
+    url: jdbc:postgresql://localhost:5432/wms
+    user: postgres
+    password: 274136
+
 logging:
   level:
     com.warehouse.wms: DEBUG
+    org.flywaydb: DEBUG
+    org.hibernate.SQL: DEBUG

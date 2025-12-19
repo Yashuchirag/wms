@@ -64,6 +64,12 @@
 			<artifactId>flyway-core</artifactId>
 		</dependency>
 
+		<!-- Flyway PostgreSQL Driver -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
 		<!-- Swagger/OpenAPI Documentation -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
