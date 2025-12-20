@@ -5,7 +5,7 @@ import com.warehouse.wms.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,11 +14,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/inventory")
-@RequiredArgsConstructor
 @Tag(name = "Inventory Management", description = "APIs for managing warehouse inventory")
 public class InventoryController {
 
     private final InventoryService inventoryService;
+
+    @Autowired
+    public InventoryController(InventoryService inventoryService) {
+        this.inventoryService = inventoryService;
+    }
 
     @GetMapping
     @Operation(summary = "Get all inventory", description = "Retrieve all inventory records")
@@ -64,26 +68,20 @@ public class InventoryController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update inventory", description = "Update an existing inventory record")
-    public ResponseEntity<InventoryDTO> updateInventory(
-            @PathVariable Long id,
-            @Valid @RequestBody InventoryDTO inventoryDTO) {
+    public ResponseEntity<InventoryDTO> updateInventory(@PathVariable Long id, @Valid @RequestBody InventoryDTO inventoryDTO) {
         return ResponseEntity.ok(inventoryService.updateInventory(id, inventoryDTO));
     }
 
     @PatchMapping("/{id}/adjust")
     @Operation(summary = "Adjust stock", description = "Adjust inventory quantity")
-    public ResponseEntity<InventoryDTO> adjustStock(
-            @PathVariable Long id,
-            @RequestParam Integer adjustment,
-            @RequestParam(required = false) String reason) {
+    public ResponseEntity<InventoryDTO> adjustStock(@PathVariable Long id, @RequestParam Integer adjustment,
+                                                    @RequestParam(required = false) String reason) {
         return ResponseEntity.ok(inventoryService.adjustStock(id, adjustment, reason));
     }
 
     @PatchMapping("/{id}/reserve")
     @Operation(summary = "Reserve stock", description = "Reserve inventory for shipment")
-    public ResponseEntity<InventoryDTO> reserveStock(
-            @PathVariable Long id,
-            @RequestParam Integer quantity) {
+    public ResponseEntity<InventoryDTO> reserveStock(@PathVariable Long id, @RequestParam Integer quantity) {
         return ResponseEntity.ok(inventoryService.reserveStock(id, quantity));
     }
 

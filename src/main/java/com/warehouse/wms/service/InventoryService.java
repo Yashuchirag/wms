@@ -10,9 +10,10 @@ import com.warehouse.wms.repository.InventoryRepository;
 import com.warehouse.wms.repository.ItemRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
 import com.warehouse.wms.repository.ZoneRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -23,16 +24,27 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class InventoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
 
     private final InventoryRepository inventoryRepository;
     private final ItemRepository itemRepository;
     private final WarehouseRepository warehouseRepository;
     private final ZoneRepository zoneRepository;
     private final ModelMapper modelMapper;
+
+    @Autowired
+    public InventoryService(InventoryRepository inventoryRepository, ItemRepository itemRepository,
+                            WarehouseRepository warehouseRepository, ZoneRepository zoneRepository,
+                            ModelMapper modelMapper) {
+        this.inventoryRepository = inventoryRepository;
+        this.itemRepository = itemRepository;
+        this.warehouseRepository = warehouseRepository;
+        this.zoneRepository = zoneRepository;
+        this.modelMapper = modelMapper;
+    }
 
     @Cacheable(value = "inventory", key = "#id")
     public InventoryDTO getInventoryById(Long id) {
