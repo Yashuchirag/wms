@@ -35,7 +35,7 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 25
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Yashuchirag/wms.git
 cd wms
 ```
 
