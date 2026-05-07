@@ -1,6 +1,6 @@
 # Warehouse Management System (WMS)
 
-A comprehensive warehouse management system built with Spring Boot 3 and Java 25.
+A comprehensive warehouse management system built with Spring Boot 3 and Java 21.
 
 ## Features
 
@@ -15,8 +15,8 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 25
 
 ## Technology Stack
 
-- **Java**: 25
-- **Spring Boot**: 3.2.0
+- **Java**: 21
+- **Spring Boot**: 3.3.6
 - **Database**: PostgreSQL 16
 - **Build Tool**: Maven
 - **Documentation**: Swagger/OpenAPI 3
@@ -24,7 +24,7 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 25
 
 ## Prerequisites
 
-- Java 25 or higher
+- Java 21 or higher
 - Maven 3.9+
 - PostgreSQL 16+ (or use Docker)
 - Docker & Docker Compose (optional)
