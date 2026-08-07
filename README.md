@@ -1,6 +1,6 @@
 # Warehouse Management System (WMS)
 
-A comprehensive warehouse management system built with Spring Boot 3 and Java 25.
+A comprehensive warehouse management system built with Spring Boot 3 and Java 21.
 
 ## Features
 
@@ -15,16 +15,18 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 25
 
 ## Technology Stack
 
-- **Java**: 25
-- **Spring Boot**: 3.2.0
+- **Java**: 21
+- **Spring Boot**: 3.5.3
 - **Database**: PostgreSQL 16
+- **Migration**: Flyway 11.8.2
 - **Build Tool**: Maven
-- **Documentation**: Swagger/OpenAPI 3
+- **Documentation**: Swagger/OpenAPI 3 (springdoc-openapi 2.8.6)
+- **Utilities**: Lombok 1.18.38, ModelMapper 3.2.4
 - **Containerization**: Docker & Docker Compose
 
 ## Prerequisites
 
-- Java 25 or higher
+- Java 21 or higher
 - Maven 3.9+
 - PostgreSQL 16+ (or use Docker)
 - Docker & Docker Compose (optional)
@@ -35,13 +37,13 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 25
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Yashuchirag/wms.git
 cd wms
 ```
 
 2. Start all services:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 3. Access the application:
@@ -51,14 +53,12 @@ docker-compose up -d
 
 ### Option 2: Local Development
 
-1. Install PostgreSQL and create database:
+1. Install PostgreSQL and create the database:
 ```sql
-CREATE DATABASE wms_dev;
-CREATE USER wms_user WITH PASSWORD 'wms_password';
-GRANT ALL PRIVILEGES ON DATABASE wms_dev TO wms_user;
+CREATE DATABASE wms;
 ```
 
-2. Update `application-dev.yml` with your database credentials
+2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password `274136`. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment.
 
 3. Build and run:
 ```bash

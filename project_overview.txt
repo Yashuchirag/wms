@@ -1,0 +1,69 @@
+Project Name: Warehouse Management System (WMS)
+Description: A comprehensive warehouse management system built with Spring Boot 3 and Java 21, 
+designed to track real-time inventory, manage warehouse zones, items, shipments, and provide automated inventory reconciliation.
+
+=========================================
+1. Technology Stack
+=========================================
+- Language: Java 21
+- Framework: Spring Boot 3.5.3
+- Database: PostgreSQL 16
+- Migration: Flyway 11.8.2
+- Build Tool: Maven
+- Documentation: Swagger/OpenAPI 3 (springdoc-openapi)
+- Containerization: Docker & Docker Compose
+- Utilities: Lombok, ModelMapper
+- Caching: Spring Cache
+- Testing: JUnit, H2 Database (for testing)
+
+=========================================
+2. Key Features
+=========================================
+- Real-time inventory tracking across multiple warehouses.
+- Warehouse and zone management (High Demand, Medium Demand, Bulk, Fragile).
+- Item catalog management with turnover rates.
+- Shipment tracking (inbound/outbound) with status updates (Pending -> Processing -> Shipped -> Delivered).
+- Automated inventory reconciliation and low stock alerts.
+- Zone-based storage optimization.
+- Complete REST API with Swagger documentation.
+
+=========================================
+3. Architecture & Project Structure
+========================================= 
+The application follows a standard layered architecture pattern:
+
+src/main/java/com/warehouse/wms/
+├── config/          # Configurations (Database, Swagger, etc.)
+├── controller/      # REST API endpoints (Inventory, Item, Shipment, Warehouse, Zone)
+├── dto/             # Data Transfer Objects for API requests/responses
+├── exception/       # Global exception handling (e.g., InsufficientStockException)
+├── model/           # JPA Entities (Inventory, Item, Shipment, Warehouse, Zone)
+├── repository/      # Spring Data JPA interfaces for DB access
+└── service/         # Core business logic processing
+
+=========================================
+4. Core Domain Models (Database Schema)
+=========================================
+- Warehouse: Details about warehouse locations and properties.
+- Zone: Storage areas within warehouses (stratified by demand or item type).
+- Item: Product catalog containing item properties (SKU, etc.).
+- Inventory: Stock levels tracking per warehouse and zone.
+- Shipment: Inbound and outbound shipment records with status tracking.
+
+Performance Optimizations include Database connection pooling (HikariCP), JPA batch processing, Caching, DB indexes, Pagination, and Async processing.
+
+=========================================
+5. API Endpoints Overview
+=========================================
+* Warehouse Management: CRUD operations for warehouses.
+* Inventory Management: List, adjust stock levels, reserve stock, and fetch low stock items.
+* Item Management: Manage catalog, retrieve by SKU, and fetch high-demand items.
+* Shipment Management: Create, track, process, and update shipment statuses.
+
+=========================================
+6. Configuration & Deployment
+=========================================
+- Profiles: `dev` (local PostgreSQL) and `prod` (environment variable driven).
+- Environment Variables: DB_URL, DB_USERNAME, DB_PASSWORD, SPRING_PROFILES_ACTIVE.
+- Docker: A provided docker-compose.yml runs the database and the application in isolated containers.
+- Monitoring: Spring Boot Actuator exposes health check (/actuator/health) and metrics endpoints (/actuator/metrics).
