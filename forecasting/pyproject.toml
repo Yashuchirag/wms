@@ -1,0 +1,18 @@
+[project]
+name = "wms-forecasting"
+version = "0.1.0"
+description = "SKU-level demand forecasting pipeline for the WMS"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "xgboost",
+    "mlflow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]

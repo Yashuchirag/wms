@@ -1,0 +1,14 @@
+data/raw/
+data/processed/
+*.csv
+*.parquet
+
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+mlruns/
+mlartifacts/
+models/*.pkl
+models/*.joblib
