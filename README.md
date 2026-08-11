@@ -58,7 +58,7 @@ docker compose up -d
 CREATE DATABASE wms;
 ```
 
-2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password ``. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment.
+2. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` to match your local `postgres` user.
 
 3. Build and run:
 ```bash
