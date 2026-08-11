@@ -1,11 +1,11 @@
 Project Name: Warehouse Management System (WMS)
-Description: A comprehensive warehouse management system built with Spring Boot 3 and Java 21, 
+Description: A comprehensive warehouse management system built with Spring Boot 3 and Java 25,
 designed to track real-time inventory, manage warehouse zones, items, shipments, and provide automated inventory reconciliation.
 
 =========================================
 1. Technology Stack
 =========================================
-- Language: Java 21
+- Language: Java 25
 - Framework: Spring Boot 3.5.3
 - Database: PostgreSQL 16
 - Migration: Flyway 11.8.2

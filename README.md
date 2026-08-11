@@ -1,6 +1,6 @@
 # Warehouse Management System (WMS)
 
-A comprehensive warehouse management system built with Spring Boot 3 and Java 21.
+A comprehensive warehouse management system built with Spring Boot 3 and Java 25.
 
 ## Features
 
@@ -15,7 +15,7 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 21
 
 ## Technology Stack
 
-- **Java**: 21
+- **Java**: 25
 - **Spring Boot**: 3.5.3
 - **Database**: PostgreSQL 16
 - **Migration**: Flyway 11.8.2
@@ -26,7 +26,7 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 21
 
 ## Prerequisites
 
-- Java 21 or higher
+- Java 25 or higher
 - Maven 3.9+
 - PostgreSQL 16+ (or use Docker)
 - Docker & Docker Compose (optional)
@@ -58,7 +58,7 @@ docker compose up -d
 CREATE DATABASE wms;
 ```
 
-2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password `274136`. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment.
+2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password ``. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment.
 
 3. Build and run:
 ```bash
