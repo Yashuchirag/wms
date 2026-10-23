@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phases 0 and 1 are done. Start Phase 2 (Spring Boot 3.5.16 to 4.1.2): bump the parent; swap `spring-boot-starter-web` for `spring-boot-starter-webmvc`; replace `flyway-core` with `spring-boot-starter-flyway`, unversion `flyway-database-postgresql` and delete the `flyway.version` pin; springdoc to 3.1.x; ModelMapper to 3.2.8; Testcontainers 2.x (`testcontainers-postgresql` artifact, `org.testcontainers.postgresql.PostgreSQLContainer`); add `spring-boot-properties-migrator` temporarily. Then run the Phase 2 command in section 7.
+Phases 0, 1 and 2 are done (Java 25, Spring Boot 4.1.2). Next is Phase 3, which is optional runtime polish (Dockerfile layer extraction, JVM flags, virtual threads), or go straight to Phase 4: remove `spring-boot-properties-migrator` from `pom.xml`, update the README to say Java 25 / Spring Boot 4.1, run the Phase 2 verification once more, then open a PR from `chore/java25-boot4` to `main`. Ask the user which of the section 6 cleanups (prometheus exposure, `application.properties`, duplicate dev Flyway block, H2) they want in this PR.
 
 ## 2. Goal
 
@@ -33,7 +33,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase 0: Flyway migration test | DONE |
 | Phase 0: API contract test with baseline snapshots | DONE |
 | Phase 1 | DONE |
-| Phase 2 | TODO |
+| Phase 2 | DONE |
 | Phase 3 | TODO |
 | Phase 4 | TODO |
 
@@ -54,7 +54,8 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - H2 is a test dependency but nothing uses it.
 - `InventoryService.adjustStock` and `reserveStock` return a stale `availableQuantity` in the response (the `@PreUpdate` recalculation runs after the DTO is built). Persisted data is correct. The contract test deliberately checks state via a follow-up GET.
 - Over-reserving stock returns 400 via `IllegalArgumentException`, although an unused `InsufficientStockException` handler returning 409 exists. The contract test pins the current 400.
-- On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. Recheck ModelMapper after the 3.2.8 bump in Phase 2; the Lombok one needs an upstream fix.
+- On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. ModelMapper 3.2.8 (Phase 2) removed its warning; the Lombok one (still present with 1.18.48) needs an upstream fix.
+- With Jackson 3, `/actuator/health` orders its keys differently (`components` before `status`). Our own endpoints' JSON is byte-identical apart from timestamps. Nothing known depends on key order; the compose healthcheck uses `pg_isready`.
 - Database password is committed in `docker-compose.yml`, `application-dev.yml` and `.env`.
 - `.github/modernize/` in the original checkout holds an abandoned August upgrade attempt; delete it once this upgrade lands.
 
@@ -64,7 +65,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 |---|---|---|
 | 0 | `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 sh mvnw -B clean verify` | BUILD SUCCESS, all tests green |
 | 1 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase1 .` | BUILD SUCCESS, no Lombok errors, no Mockito dynamic agent warning, image builds |
-| 2 | same as Phase 1 | BUILD SUCCESS with no edits to the contract or migration tests beyond Testcontainers 2.x imports |
+| 2 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase2 .` | BUILD SUCCESS with no edits to the contract or migration tests beyond Testcontainers 2.x imports; no properties-migrator or `HHH90000025` warnings in the log |
 
 ## 8. Session log
 
@@ -84,3 +85,10 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Phase 1: parent to Spring Boot 3.5.16, `java.version` 25, removed the hardcoded compiler `source`/`target` (the parent sets `release` from `java.version`), Lombok processor now uses `${lombok.version}` (1.18.46), removed the `testcontainers.version` override, Dockerfile on `eclipse-temurin:25-*-alpine`, Maven wrapper 3.9.16. Kept the `flyway.version` 11.8.2 pin because Boot 3.5.16 manages the older 11.7.2.
 - Attached Mockito as a `-javaagent` in surefire (via `maven-dependency-plugin:properties`), which removed the JDK dynamic agent warnings.
 - Phase 1 verification passes on JDK 25: 17 tests, BUILD SUCCESS, classes compiled at major version 69. The Docker image builds and runs Java 25.0.3; a smoke run with the `prod` profile against a throwaway Postgres applied all 6 migrations, reported health UP and served `/api/v1/warehouses` and Swagger UI.
+- Pushed Phase 1.
+- Phase 2, step 1: bumped only the parent to 4.1.2 (plus the forced Testcontainers 2 rename). The build compiled and `contextLoads` passed, but Flyway never ran and 9 tests failed with `relation "items" does not exist`. This confirmed the plan's Flyway trap and that `FlywayMigrationTest` and `ApiContractTest` catch it.
+- Phase 2, step 2: `spring-boot-starter-web` to `spring-boot-starter-webmvc`; `flyway-core` replaced by `spring-boot-starter-flyway`, `flyway-database-postgresql` unversioned, `flyway.version` pin removed (now Flyway 12.4.0); springdoc 3.1.1; ModelMapper 3.2.8; `testcontainers-postgresql` with `org.testcontainers.postgresql.PostgreSQLContainer` (Testcontainers 2.0.5); `spring-boot-properties-migrator` added temporarily.
+- The migrator flagged `server.error.include-message`; moved it to `spring.web.error.include-message` (same `always` value; the old key would silently default to `never`). Removed the explicit `hibernate.dialect` after Hibernate 7.4 logged `HHH90000025`.
+- Phase 2 verification passes: 17 tests on Spring Boot 4.1.2 / Hibernate 7.4.13 / Jackson 3.1.7, with the contract and migration tests unchanged apart from the Testcontainers import.
+- Docker smoke: a database migrated by the Phase 1 image (Flyway 11.8) was validated by the Phase 2 image (Flyway 12.4) with "Schema is up to date", `/actuator/flyway` lists V1 to V6 as SUCCESS, Swagger UI loads, and the prod profile logs no migrator warnings. The `dev` profile also starts cleanly from the packaged jar.
+- `/api-docs` diff against the baseline: springdoc 3 now marks `@NotBlank` fields (`sku`, `name`, `code`, `trackingNumber`) as `required`. No other changes.
