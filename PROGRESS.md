@@ -18,7 +18,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 
 ## 3. Decisions
 
-- Work happens on branch `chore/java25-boot4`, cut from `main`, in the worktree `../wms-upgrade`. The original checkout stays on `feature/demand-forecasting-pipeline` with its uncommitted `forecasting/pyproject.toml` change untouched, because `main` has no `forecasting/` and a checkout would collide with it.
+- Work happens on branch `chore/java25-boot4`, cut from `main`, in the single checkout at `/root/Personal_Projects/wms` (no separate worktree). `main` has no `forecasting/`, so before switching to this branch, commit or stash any uncommitted change under `forecasting/` on `feature/demand-forecasting-pipeline`, or the checkout will refuse.
 - Integration tests use the `itest` profile, not `dev`. `application-dev.yml` sets `spring.flyway.url` explicitly, which Testcontainers' `@ServiceConnection` does not override, so Flyway would still try `localhost:5432`.
 - One HTTP-level contract test replaces the planned per-controller `@WebMvcTest` classes. It exercises the real Jackson, Hibernate and Flyway stack, which is what the Boot 4 upgrade changes.
 - Tests call the API with the JDK `HttpClient`, not MockMvc or TestRestTemplate, because both of those move packages in Boot 4. The tests should not need edits during Phase 2, so that a green run proves behaviour is unchanged.
@@ -28,7 +28,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 
 | Task | Status |
 |---|---|
-| Phase 0: branch and worktree | DONE |
+| Phase 0: branch | DONE |
 | Phase 0: Testcontainers setup, `contextLoads` passing | DONE |
 | Phase 0: Flyway migration test | DONE |
 | Phase 0: API contract test with baseline snapshots | DONE |
@@ -78,3 +78,4 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Confirmed the contract test catches regressions by altering `shipments.json` and `zones.json`; both changes failed as expected, then the files were restored.
 - Phase 0 verification passes: 17 tests, BUILD SUCCESS on JDK 21.
 - Committed `CLAUDE.md` on `main` (b453017) and cherry-picked it onto `feature/demand-forecasting-pipeline` and this branch, so every branch cut from `main` from now on has it.
+- Removed the `../wms-upgrade` worktree at the user's request; all work now happens in `/root/Personal_Projects/wms`. The branch and its commits are unchanged.
