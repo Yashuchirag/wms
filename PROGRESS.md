@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phase 0 is done. Start Phase 1: bump the parent to Spring Boot 3.5.16, set `java.version` to 25, replace the Lombok `1.18.38` annotation processor version with `${lombok.version}`, drop the hardcoded compiler `source`/`target`, move the Dockerfile to temurin 25 and the wrapper to Maven 3.9.16. Then run the Phase 1 command in section 7. Re-check whether the `testcontainers.version` override is still needed once the parent is 3.5.16.
+Phases 0 and 1 are done. Start Phase 2 (Spring Boot 3.5.16 to 4.1.2): bump the parent; swap `spring-boot-starter-web` for `spring-boot-starter-webmvc`; replace `flyway-core` with `spring-boot-starter-flyway`, unversion `flyway-database-postgresql` and delete the `flyway.version` pin; springdoc to 3.1.x; ModelMapper to 3.2.8; Testcontainers 2.x (`testcontainers-postgresql` artifact, `org.testcontainers.postgresql.PostgreSQLContainer`); add `spring-boot-properties-migrator` temporarily. Then run the Phase 2 command in section 7.
 
 ## 2. Goal
 
@@ -32,7 +32,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase 0: Testcontainers setup, `contextLoads` passing | DONE |
 | Phase 0: Flyway migration test | DONE |
 | Phase 0: API contract test with baseline snapshots | DONE |
-| Phase 1 | TODO |
+| Phase 1 | DONE |
 | Phase 2 | TODO |
 | Phase 3 | TODO |
 | Phase 4 | TODO |
@@ -41,7 +41,8 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 
 - JDK 21 at `/usr/lib/jvm/java-21-openjdk-amd64`, JDK 25 at `/usr/lib/jvm/java-25-openjdk-amd64`. The default `java` on PATH is 25, so set `JAVA_HOME` explicitly for every build.
 - `mvnw` is committed without the executable bit (`core.fileMode=false`), so run it as `sh mvnw`.
-- Docker Engine 29.x is available locally; Testcontainers needs it. Engine 29 rejects Docker API clients older than 1.44, so Testcontainers below 1.21.4 fails with "client version 1.32 is too old". `pom.xml` overrides `testcontainers.version` to 1.21.4 for that reason. In Phase 2, Boot 4 brings Testcontainers 2.x: the override goes away, the artifact becomes `testcontainers-postgresql` and `PostgreSQLContainer` moves to `org.testcontainers.postgresql`.
+- Docker Engine 29.x is available locally; Testcontainers needs it. Engine 29 rejects Docker API clients older than 1.44, so Testcontainers below 1.21.4 fails with "client version 1.32 is too old". Phase 0 overrode `testcontainers.version` to 1.21.4 for that reason; Boot 3.5.16 manages 1.21.4 itself, so Phase 1 removed the override. In Phase 2, Boot 4 brings Testcontainers 2.x: the artifact becomes `testcontainers-postgresql` and `PostgreSQLContainer` moves to `org.testcontainers.postgresql`.
+- The VS Code Java extension rebuilds into `target/` when `pom.xml` changes, which can make `mvn clean` fail with "Failed to delete .../target". Rerunning the command fixes it.
 - The three `@SpringBootTest` classes use identical annotations so they share one cached context and one container. Keep it that way when adding integration tests.
 
 ## 6. Noticed, not fixed
@@ -53,6 +54,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - H2 is a test dependency but nothing uses it.
 - `InventoryService.adjustStock` and `reserveStock` return a stale `availableQuantity` in the response (the `@PreUpdate` recalculation runs after the DTO is built). Persisted data is correct. The contract test deliberately checks state via a follow-up GET.
 - Over-reserving stock returns 400 via `IllegalArgumentException`, although an unused `InsufficientStockException` handler returning 409 exists. The contract test pins the current 400.
+- On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. Recheck ModelMapper after the 3.2.8 bump in Phase 2; the Lombok one needs an upstream fix.
 - Database password is committed in `docker-compose.yml`, `application-dev.yml` and `.env`.
 - `.github/modernize/` in the original checkout holds an abandoned August upgrade attempt; delete it once this upgrade lands.
 
@@ -61,7 +63,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase | Command | Pass condition |
 |---|---|---|
 | 0 | `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 sh mvnw -B clean verify` | BUILD SUCCESS, all tests green |
-| 1 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify` | BUILD SUCCESS, no Lombok errors |
+| 1 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase1 .` | BUILD SUCCESS, no Lombok errors, no Mockito dynamic agent warning, image builds |
 | 2 | same as Phase 1 | BUILD SUCCESS with no edits to the contract or migration tests beyond Testcontainers 2.x imports |
 
 ## 8. Session log
@@ -79,3 +81,6 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Phase 0 verification passes: 17 tests, BUILD SUCCESS on JDK 21.
 - Committed `CLAUDE.md` on `main` (b453017) and cherry-picked it onto `feature/demand-forecasting-pipeline` and this branch, so every branch cut from `main` from now on has it.
 - Removed the `../wms-upgrade` worktree at the user's request; all work now happens in `/root/Personal_Projects/wms`. The branch and its commits are unchanged.
+- Phase 1: parent to Spring Boot 3.5.16, `java.version` 25, removed the hardcoded compiler `source`/`target` (the parent sets `release` from `java.version`), Lombok processor now uses `${lombok.version}` (1.18.46), removed the `testcontainers.version` override, Dockerfile on `eclipse-temurin:25-*-alpine`, Maven wrapper 3.9.16. Kept the `flyway.version` 11.8.2 pin because Boot 3.5.16 manages the older 11.7.2.
+- Attached Mockito as a `-javaagent` in surefire (via `maven-dependency-plugin:properties`), which removed the JDK dynamic agent warnings.
+- Phase 1 verification passes on JDK 25: 17 tests, BUILD SUCCESS, classes compiled at major version 69. The Docker image builds and runs Java 25.0.3; a smoke run with the `prod` profile against a throwaway Postgres applied all 6 migrations, reported health UP and served `/api/v1/warehouses` and Swagger UI.
