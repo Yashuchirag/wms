@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "trackingNumber": "TRK-A1B2C3D4",
+    "warehouseId": 1,
+    "itemId": 1,
+    "quantity": 5,
+    "type": "OUTBOUND",
+    "status": "PROCESSING",
+    "customerName": "John Doe",
+    "shippingAddress": "123 Main St, New York, NY 10001",
+    "expectedDelivery": "2026-10-26T15:44:53.849885",
+    "actualDelivery": null
+  },
+  {
+    "id": 2,
+    "trackingNumber": "TRK-E5F6G7H8",
+    "warehouseId": 1,
+    "itemId": 3,
+    "quantity": 20,
+    "type": "OUTBOUND",
+    "status": "SHIPPED",
+    "customerName": "Jane Smith",
+    "shippingAddress": "456 Oak Ave, Brooklyn, NY 11201",
+    "expectedDelivery": "2026-10-25T15:44:53.849885",
+    "actualDelivery": null
+  },
+  {
+    "id": 3,
+    "trackingNumber": "TRK-I9J0K1L2",
+    "warehouseId": 2,
+    "itemId": 4,
+    "quantity": 10,
+    "type": "INBOUND",
+    "status": "PENDING",
+    "customerName": null,
+    "shippingAddress": null,
+    "expectedDelivery": null,
+    "actualDelivery": null
+  }
+]
