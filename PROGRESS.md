@@ -77,3 +77,4 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Added `FlywayMigrationTest` (all 6 migrations applied, update trigger refreshes `updated_at`) and `ApiContractTest` (list endpoints strictly match the baseline, 404 and validation error shapes, and an inventory create/adjust/reserve/delete round trip).
 - Confirmed the contract test catches regressions by altering `shipments.json` and `zones.json`; both changes failed as expected, then the files were restored.
 - Phase 0 verification passes: 17 tests, BUILD SUCCESS on JDK 21.
+- Committed `CLAUDE.md` on `main` (b453017) and cherry-picked it onto `feature/demand-forecasting-pipeline` and this branch, so every branch cut from `main` from now on has it.
