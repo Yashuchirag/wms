@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phases 0 to 2 and Phase 4 step 1 are done. Next: open a PR from `chore/java25-boot4` to `main` (`gh pr create --base main`), then merge it with a merge commit (not squash) so each phase stays individually revertable. Phase 3 (optional runtime polish) is skipped unless the user asks for it. After merging, follow the post-merge steps in the session log of 2026-10-23.
+PR #1 (https://github.com/Yashuchirag/wms/pull/1) from `chore/java25-boot4` to `main` is open and waiting for the user's review. Next: merge it with a merge commit (`gh pr merge 1 --merge --delete-branch`), not squash, so each phase stays individually revertable. Then follow the post-merge steps in the 2026-10-23 session log.
 
 ## 2. Goal
 
@@ -36,7 +36,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase 2 | DONE |
 | Phase 3 | TODO |
 | Phase 4: remove properties migrator, update README, optional cleanups | DONE |
-| Phase 4: open PR to `main` | TODO |
+| Phase 4: open PR to `main` | DONE |
 | Phase 4: merge with a merge commit | TODO |
 
 ## 5. Environment notes
@@ -97,3 +97,4 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Optional cleanups at the user's request: removed the unused H2 test dependency; removed `prometheus` from the actuator exposure list (no registry dependency, so it never worked); deleted `application.properties`, so `spring.application.name` is now `warehouse-management-system` from `application.yml` instead of `Warehouse`; removed the duplicate `url`/`user`/`password` from the dev Flyway block so Flyway uses the main datasource.
 - Verification: 17 tests pass on JDK 25, the jar contains neither H2 nor the migrator, and the packaged jar with the `dev` profile migrated a fresh local Postgres through the main datasource and served data.
 - Post-merge steps for the user: `git checkout main && git pull`; `docker compose up --build`; point the IDE at JDK 25; delete the `appmod/java-upgrade-20260811013250` branch and `.github/modernize/`; merge `main` into `feature/demand-forecasting-pipeline`.
+- Pushed Phase 4 step 1 and opened PR #1 to `main` (7 commits, 19 files).
