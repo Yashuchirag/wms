@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "code": "Z-A1",
+    "name": "High Demand Zone A",
+    "type": "HIGH_DEMAND",
+    "warehouseId": 1,
+    "warehouseName": "Main Warehouse"
+  },
+  {
+    "id": 2,
+    "code": "Z-B1",
+    "name": "Medium Demand Zone B",
+    "type": "MEDIUM_DEMAND",
+    "warehouseId": 1,
+    "warehouseName": "Main Warehouse"
+  },
+  {
+    "id": 3,
+    "code": "Z-C1",
+    "name": "Bulk Storage Zone C",
+    "type": "BULK",
+    "warehouseId": 1,
+    "warehouseName": "Main Warehouse"
+  },
+  {
+    "id": 4,
+    "code": "Z-A2",
+    "name": "High Demand Zone A",
+    "type": "HIGH_DEMAND",
+    "warehouseId": 2,
+    "warehouseName": "West Coast Distribution"
+  },
+  {
+    "id": 5,
+    "code": "Z-B2",
+    "name": "Fragile Items Zone",
+    "type": "FRAGILE",
+    "warehouseId": 2,
+    "warehouseName": "West Coast Distribution"
+  }
+]

@@ -1,0 +1,1692 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Warehouse Management System API",
+    "description": "REST API for Warehouse Management System",
+    "contact": {
+      "name": "WMS Support Team",
+      "email": "support@wms.com"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Development Server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Inventory Management",
+      "description": "APIs for managing warehouse inventory"
+    },
+    {
+      "name": "Item Management",
+      "description": "APIs for managing warehouse items"
+    },
+    {
+      "name": "Shipment Management",
+      "description": "APIs for managing shipments"
+    },
+    {
+      "name": "Warehouse Management",
+      "description": "APIs for managing warehouses"
+    },
+    {
+      "name": "Zone Management",
+      "description": "APIs for managing warehouse zones"
+    }
+  ],
+  "paths": {
+    "/api/v1/zones/{id}": {
+      "get": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Get zone by ID",
+        "description": "Retrieve zone by its ID",
+        "operationId": "getZoneById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Update zone",
+        "description": "Update an existing zone",
+        "operationId": "updateZone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Delete zone",
+        "description": "Delete a warehouse zone",
+        "operationId": "deleteZone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses/{id}": {
+      "get": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Get warehouse by ID",
+        "description": "Retrieve warehouse by its ID",
+        "operationId": "getWarehouseById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Update warehouse",
+        "description": "Update an existing warehouse",
+        "operationId": "updateWarehouse",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarehouseDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Delete warehouse",
+        "description": "Delete a warehouse",
+        "operationId": "deleteWarehouse",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/items/{id}": {
+      "get": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Get item by ID",
+        "description": "Retrieve item by its ID",
+        "operationId": "getItemById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Update item",
+        "description": "Update an existing item",
+        "operationId": "updateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Delete item",
+        "description": "Delete an item from the catalog",
+        "operationId": "deleteItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/{id}": {
+      "get": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Get inventory by ID",
+        "description": "Retrieve inventory by its ID",
+        "operationId": "getInventoryById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Update inventory",
+        "description": "Update an existing inventory record",
+        "operationId": "updateInventory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Delete inventory",
+        "description": "Delete an inventory record",
+        "operationId": "deleteInventory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/zones": {
+      "get": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Get all zones",
+        "description": "Retrieve all warehouse zones",
+        "operationId": "getAllZones",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Create zone",
+        "description": "Create a new warehouse zone",
+        "operationId": "createZone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses": {
+      "get": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Get all warehouses",
+        "description": "Retrieve all warehouses",
+        "operationId": "getAllWarehouses",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WarehouseDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Create warehouse",
+        "description": "Create a new warehouse",
+        "operationId": "createWarehouse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarehouseDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments": {
+      "get": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Get all shipments",
+        "description": "Retrieve all shipments",
+        "operationId": "getAllShipments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Create shipment",
+        "description": "Create a new shipment",
+        "operationId": "createShipment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/{id}/process": {
+      "post": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Process shipment",
+        "description": "Process a shipment and update inventory",
+        "operationId": "processShipment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/items": {
+      "get": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Get all items",
+        "description": "Retrieve all items in the catalog",
+        "operationId": "getAllItems",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Create item",
+        "description": "Create a new item in the catalog",
+        "operationId": "createItem",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory": {
+      "get": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Get all inventory",
+        "description": "Retrieve all inventory records",
+        "operationId": "getAllInventory",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Create inventory",
+        "description": "Create a new inventory record",
+        "operationId": "createInventory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/{id}/status": {
+      "patch": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Update shipment status",
+        "description": "Update the status of a shipment",
+        "operationId": "updateShipmentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PROCESSING",
+                "SHIPPED",
+                "DELIVERED",
+                "CANCELLED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/{id}/reserve": {
+      "patch": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Reserve stock",
+        "description": "Reserve inventory for shipment",
+        "operationId": "reserveStock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "quantity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/{id}/adjust": {
+      "patch": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Adjust stock",
+        "description": "Adjust inventory quantity",
+        "operationId": "adjustStock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "adjustment",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/warehouse/{warehouseId}": {
+      "get": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Get zones by warehouse",
+        "description": "Retrieve all zones for a specific warehouse",
+        "operationId": "getZonesByWarehouse",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/type/{type}": {
+      "get": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Get zones by type",
+        "description": "Retrieve zones by type (HIGH_DEMAND, MEDIUM_DEMAND, LOW_DEMAND, BULK, FRAGILE)",
+        "operationId": "getZonesByType",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "HIGH_DEMAND",
+                "MEDIUM_DEMAND",
+                "LOW_DEMAND",
+                "BULK",
+                "FRAGILE"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/code/{code}": {
+      "get": {
+        "tags": [
+          "Zone Management"
+        ],
+        "summary": "Get zone by code",
+        "description": "Retrieve zone by its code",
+        "operationId": "getZoneByCode",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses/code/{code}": {
+      "get": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Get warehouse by code",
+        "description": "Retrieve warehouse by its code",
+        "operationId": "getWarehouseByCode",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses/active": {
+      "get": {
+        "tags": [
+          "Warehouse Management"
+        ],
+        "summary": "Get active warehouses",
+        "description": "Retrieve all active warehouses",
+        "operationId": "getActiveWarehouses",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WarehouseDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/{id}": {
+      "get": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Get shipment by ID",
+        "description": "Retrieve shipment by its ID",
+        "operationId": "getShipmentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Delete shipment",
+        "description": "Delete a shipment",
+        "operationId": "deleteShipment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/warehouse/{warehouseId}": {
+      "get": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Get shipments by warehouse",
+        "description": "Retrieve all shipments for a warehouse",
+        "operationId": "getShipmentsByWarehouse",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/tracking/{trackingNumber}": {
+      "get": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Track shipment",
+        "description": "Track shipment by tracking number",
+        "operationId": "getShipmentByTrackingNumber",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipments/status/{status}": {
+      "get": {
+        "tags": [
+          "Shipment Management"
+        ],
+        "summary": "Get shipments by status",
+        "description": "Retrieve shipments by status",
+        "operationId": "getShipmentsByStatus",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PROCESSING",
+                "SHIPPED",
+                "DELIVERED",
+                "CANCELLED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShipmentDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/items/sku/{sku}": {
+      "get": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Get item by SKU",
+        "description": "Retrieve item by its SKU",
+        "operationId": "getItemBySku",
+        "parameters": [
+          {
+            "name": "sku",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/items/high-demand": {
+      "get": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Get high demand items",
+        "description": "Retrieve items marked as high priority",
+        "operationId": "getHighDemandItems",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/items/category/{category}": {
+      "get": {
+        "tags": [
+          "Item Management"
+        ],
+        "summary": "Get items by category",
+        "description": "Retrieve all items in a category",
+        "operationId": "getItemsByCategory",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/warehouse/{warehouseId}": {
+      "get": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Get inventory by warehouse",
+        "description": "Retrieve all inventory for a specific warehouse",
+        "operationId": "getInventoryByWarehouse",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/warehouse/{warehouseId}/total": {
+      "get": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Get total inventory",
+        "description": "Get total inventory count for a warehouse",
+        "operationId": "getTotalInventory",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/low-stock": {
+      "get": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Get low stock items",
+        "description": "Retrieve items with stock below reorder point",
+        "operationId": "getLowStockItems",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/item/{itemId}": {
+      "get": {
+        "tags": [
+          "Inventory Management"
+        ],
+        "summary": "Get inventory by item",
+        "description": "Retrieve all inventory for a specific item",
+        "operationId": "getInventoryByItem",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ZoneDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "HIGH_DEMAND",
+              "MEDIUM_DEMAND",
+              "LOW_DEMAND",
+              "BULK",
+              "FRAGILE"
+            ]
+          },
+          "warehouseId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warehouseName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "warehouseId"
+        ]
+      },
+      "WarehouseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zipCode": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "MAINTENANCE"
+            ]
+          }
+        }
+      },
+      "ItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sku": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
+          },
+          "dimensions": {
+            "type": "string"
+          },
+          "turnoverRate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ]
+          }
+        },
+        "required": [
+          "priority"
+        ]
+      },
+      "InventoryDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warehouseId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "zoneId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "reservedQuantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "availableQuantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reorderPoint": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "itemSku": {
+            "type": "string"
+          },
+          "itemName": {
+            "type": "string"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "zoneName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "quantity",
+          "warehouseId"
+        ]
+      },
+      "ShipmentDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "trackingNumber": {
+            "type": "string",
+            "minLength": 1
+          },
+          "warehouseId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INBOUND",
+              "OUTBOUND"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PROCESSING",
+              "SHIPPED",
+              "DELIVERED",
+              "CANCELLED"
+            ]
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "shippingAddress": {
+            "type": "string"
+          },
+          "expectedDelivery": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actualDelivery": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "itemId",
+          "quantity",
+          "type",
+          "warehouseId"
+        ]
+      }
+    }
+  }
+}

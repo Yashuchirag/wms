@@ -1,6 +1,6 @@
 # Warehouse Management System (WMS)
 
-A comprehensive warehouse management system built with Spring Boot 3 and Java 21.
+A comprehensive warehouse management system built with Spring Boot 4 and Java 25.
 
 ## Features
 
@@ -15,18 +15,18 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 21
 
 ## Technology Stack
 
-- **Java**: 21
-- **Spring Boot**: 3.5.3
+- **Java**: 25
+- **Spring Boot**: 4.1.2
 - **Database**: PostgreSQL 16
-- **Migration**: Flyway 11.8.2
+- **Migration**: Flyway 12.4.0
 - **Build Tool**: Maven
-- **Documentation**: Swagger/OpenAPI 3 (springdoc-openapi 2.8.6)
-- **Utilities**: Lombok 1.18.38, ModelMapper 3.2.4
+- **Documentation**: Swagger/OpenAPI 3 (springdoc-openapi 3.1.1)
+- **Utilities**: Lombok 1.18.48, ModelMapper 3.2.8
 - **Containerization**: Docker & Docker Compose
 
 ## Prerequisites
 
-- Java 21 or higher
+- Java 25 or higher
 - Maven 3.9+
 - PostgreSQL 16+ (or use Docker)
 - Docker & Docker Compose (optional)
@@ -41,15 +41,23 @@ git clone https://github.com/Yashuchirag/wms.git
 cd wms
 ```
 
-2. Start all services:
+2. Create your local `.env` and set real passwords for `DB_PASSWORD` and `PGADMIN_PASSWORD`:
+```bash
+cp .env.example .env
+```
+`.env` is gitignored. Never commit it. Compose refuses to start if either password is missing.
+
+3. Start all services:
 ```bash
 docker compose up -d
 ```
 
-3. Access the application:
+4. Access the application:
     - API: http://localhost:8080
     - Swagger UI: http://localhost:8080/swagger-ui.html
-    - PgAdmin: http://localhost:5050 (admin@wms.com / admin)
+    - PgAdmin: http://localhost:5050 (log in with `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` from `.env`)
+
+All ports are bound to `127.0.0.1`, so the services are only reachable from your own machine.
 
 ### Option 2: Local Development
 
@@ -58,7 +66,7 @@ docker compose up -d
 CREATE DATABASE wms;
 ```
 
-2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password `274136`. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment.
+2. Copy `.env.example` to `.env` and set `DB_PASSWORD` (and `DB_URL` / `DB_USERNAME` if they differ) to match your local `postgres` user. The `dev` profile reads `.env` from the directory you start the app in, and real environment variables take precedence. Flyway uses the same connection. If the password is missing, startup fails with "password authentication failed".
 
 3. Build and run:
 ```bash
@@ -147,6 +155,8 @@ Run tests:
 ```bash
 ./mvnw test
 ```
+
+Integration tests start a throwaway PostgreSQL 16 container through Testcontainers, so Docker must be running. No local database is needed.
 
 Run with coverage:
 ```bash
