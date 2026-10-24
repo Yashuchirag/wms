@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "itemId": 1,
+    "warehouseId": 1,
+    "zoneId": 1,
+    "quantity": 100,
+    "reservedQuantity": 10,
+    "availableQuantity": 90,
+    "reorderPoint": 20,
+    "itemSku": "SKU-001",
+    "itemName": "Laptop Computer",
+    "warehouseCode": "WH-001",
+    "zoneName": "High Demand Zone A"
+  },
+  {
+    "id": 2,
+    "itemId": 2,
+    "warehouseId": 1,
+    "zoneId": 2,
+    "quantity": 50,
+    "reservedQuantity": 5,
+    "availableQuantity": 45,
+    "reorderPoint": 10,
+    "itemSku": "SKU-002",
+    "itemName": "Office Chair",
+    "warehouseCode": "WH-001",
+    "zoneName": "Medium Demand Zone B"
+  },
+  {
+    "id": 3,
+    "itemId": 3,
+    "warehouseId": 1,
+    "zoneId": 1,
+    "quantity": 200,
+    "reservedQuantity": 30,
+    "availableQuantity": 170,
+    "reorderPoint": 50,
+    "itemSku": "SKU-003",
+    "itemName": "Wireless Mouse",
+    "warehouseCode": "WH-001",
+    "zoneName": "High Demand Zone A"
+  },
+  {
+    "id": 4,
+    "itemId": 4,
+    "warehouseId": 2,
+    "zoneId": 4,
+    "quantity": 75,
+    "reservedQuantity": 0,
+    "availableQuantity": 75,
+    "reorderPoint": 15,
+    "itemSku": "SKU-004",
+    "itemName": "Desk Lamp",
+    "warehouseCode": "WH-002",
+    "zoneName": "High Demand Zone A"
+  },
+  {
+    "id": 5,
+    "itemId": 5,
+    "warehouseId": 2,
+    "zoneId": 4,
+    "quantity": 500,
+    "reservedQuantity": 50,
+    "availableQuantity": 450,
+    "reorderPoint": 100,
+    "itemSku": "SKU-005",
+    "itemName": "USB Cable",
+    "warehouseCode": "WH-002",
+    "zoneName": "High Demand Zone A"
+  }
+]

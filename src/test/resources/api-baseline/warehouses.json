@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "code": "WH-001",
+    "name": "Main Warehouse",
+    "address": "123 Storage St",
+    "city": "New York",
+    "state": "NY",
+    "zipCode": "10001",
+    "capacity": 100000.0,
+    "status": "ACTIVE"
+  },
+  {
+    "id": 2,
+    "code": "WH-002",
+    "name": "West Coast Distribution",
+    "address": "456 Logistics Ave",
+    "city": "Los Angeles",
+    "state": "CA",
+    "zipCode": "90001",
+    "capacity": 80000.0,
+    "status": "ACTIVE"
+  },
+  {
+    "id": 3,
+    "code": "WH-003",
+    "name": "Midwest Hub",
+    "address": "789 Supply Blvd",
+    "city": "Chicago",
+    "state": "IL",
+    "zipCode": "60601",
+    "capacity": 75000.0,
+    "status": "ACTIVE"
+  }
+]

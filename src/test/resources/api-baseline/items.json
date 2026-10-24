@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "sku": "SKU-001",
+    "name": "Laptop Computer",
+    "description": "High-performance laptop",
+    "category": "Electronics",
+    "price": 999.99,
+    "weight": 2.5,
+    "dimensions": null,
+    "turnoverRate": 150,
+    "priority": "HIGH"
+  },
+  {
+    "id": 2,
+    "sku": "SKU-002",
+    "name": "Office Chair",
+    "description": "Ergonomic office chair",
+    "category": "Furniture",
+    "price": 299.99,
+    "weight": 15.0,
+    "dimensions": null,
+    "turnoverRate": 80,
+    "priority": "MEDIUM"
+  },
+  {
+    "id": 3,
+    "sku": "SKU-003",
+    "name": "Wireless Mouse",
+    "description": "Bluetooth wireless mouse",
+    "category": "Electronics",
+    "price": 29.99,
+    "weight": 0.2,
+    "dimensions": null,
+    "turnoverRate": 200,
+    "priority": "HIGH"
+  },
+  {
+    "id": 4,
+    "sku": "SKU-004",
+    "name": "Desk Lamp",
+    "description": "LED desk lamp",
+    "category": "Furniture",
+    "price": 49.99,
+    "weight": 1.5,
+    "dimensions": null,
+    "turnoverRate": 45,
+    "priority": "LOW"
+  },
+  {
+    "id": 5,
+    "sku": "SKU-005",
+    "name": "USB Cable",
+    "description": "USB-C charging cable",
+    "category": "Electronics",
+    "price": 9.99,
+    "weight": 0.1,
+    "dimensions": null,
+    "turnoverRate": 300,
+    "priority": "MEDIUM"
+  }
+]

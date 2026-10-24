@@ -26,9 +26,6 @@ spring:
     baseline-version: 0
     locations: classpath:db/migration
     clean-disabled: false  # Allow clean in dev
-    url: jdbc:postgresql://localhost:5432/wms
-    user: postgres
-    password: 274136
 
 logging:
   level:
