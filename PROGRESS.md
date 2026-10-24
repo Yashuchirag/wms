@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-The upgrade is complete (PR #1, merge commit `8a1865b`). Current work: credentials externalized on branch `chore/externalize-credentials`, verified and opened as PR #2 (https://github.com/Yashuchirag/wms/pull/2), waiting for the user's review and merge. The user chose to rotate the dev database password themselves later; the rotation commands are in the 2026-10-23 session log. Remaining user follow-ups: point the IDE at JDK 25 and merge `main` into `feature/demand-forecasting-pipeline`.
+The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), so that branch is on Java 25 / Spring Boot 4.1 with no passwords in tracked files. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
 ## 2. Goal
 
@@ -41,6 +41,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Cleanup: delete `appmod/java-upgrade-20260811013250` and `.github/modernize/` | DONE |
 | Credentials: move out of tracked files into `.env` | DONE |
 | Credentials: rotate the dev DB and pgAdmin passwords | TODO (user) |
+| Merge `main` into `feature/demand-forecasting-pipeline` | DONE |
 
 ## 5. Environment notes
 
@@ -107,3 +108,5 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Verification: 17 tests pass; recreated the compose stack (kept the `wms_postgres_data` volume; a Docker recreate race left temporary container names, fixed with `docker compose down` and `up -d`, no `-v`); app connects ("Schema is up to date"), pgAdmin login works with the `.env` values, Windows can still reach ports 8080, 5050 and 5432 on localhost; the dev profile connects using `.env` and fails without it.
 - Rotation commands for the user (run from the repo root, with the stack up): pick a new password, then `docker exec -it wms-postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'NEW_PASSWORD';"`, set `DB_PASSWORD=NEW_PASSWORD` in `.env`, and run `docker compose up -d` to restart the app. For pgAdmin, change `PGADMIN_PASSWORD` in `.env` and run `docker compose up -d pgadmin` (it has no volume, so it re-initialises with the new password). If a native local Postgres also uses the old password, run the same `ALTER USER` there.
 - Pushed `chore/externalize-credentials` and opened PR #2 to `main`.
+- Merged PR #2 into `main` (`450bdf9`).
+- Scanned `feature/demand-forecasting-pipeline` for secrets: the forecasting Python code has none (no DSN, tokens or DB URLs; `sentry-sdk` is a dependency but unconfigured); its only exposure was the pre-fix copies of `docker-compose.yml`, `application-dev.yml` and `README.md`. Merged `main` into the branch (`1708f5a`, no conflicts, no changes under `forecasting/`). Java tests (17) and forecasting pytest (4) pass on the branch. `forecasting/.gitignore` covers `.venv/`, `mlflow.db` and data; there is no `.env` under `forecasting/`.
