@@ -1,8 +1,12 @@
 spring:
+  # Reads DB_* from .env in the working directory (copy .env.example); real env vars take precedence
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/wms
-    username: postgres
-    password: 274136
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/wms}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
