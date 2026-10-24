@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-The upgrade is complete: PR #1 was merged into `main` as merge commit `8a1865b`. Nothing in the upgrade itself is outstanding. Remaining follow-ups belong to the user: run `docker compose up --build`, point the IDE at JDK 25, and merge `main` into `feature/demand-forecasting-pipeline`. Phase 3 (optional runtime polish) was skipped and can be picked up as new work. Section 6 lists the pre-existing issues found along the way, as candidates for future work.
+The upgrade is complete (PR #1, merge commit `8a1865b`). Current work: credentials externalized on branch `chore/externalize-credentials`, verified and committed, waiting for the user to push and open a PR. The user chose to rotate the dev database password themselves later; the rotation commands are in the 2026-10-23 session log. Remaining user follow-ups: point the IDE at JDK 25 and merge `main` into `feature/demand-forecasting-pipeline`.
 
 ## 2. Goal
 
@@ -39,6 +39,8 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase 4: open PR to `main` | DONE |
 | Phase 4: merge with a merge commit | DONE |
 | Cleanup: delete `appmod/java-upgrade-20260811013250` and `.github/modernize/` | DONE |
+| Credentials: move out of tracked files into `.env` | DONE |
+| Credentials: rotate the dev DB and pgAdmin passwords | TODO (user) |
 
 ## 5. Environment notes
 
@@ -57,7 +59,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Over-reserving stock returns 400 via `IllegalArgumentException`, although an unused `InsufficientStockException` handler returning 409 exists. The contract test pins the current 400.
 - On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. ModelMapper 3.2.8 (Phase 2) removed its warning; the Lombok one (still present with 1.18.48) needs an upstream fix.
 - With Jackson 3, `/actuator/health` orders its keys differently (`components` before `status`). Our own endpoints' JSON is byte-identical apart from timestamps. Nothing known depends on key order; the compose healthcheck uses `pg_isready`.
-- Database password is committed in `docker-compose.yml`, `application-dev.yml` and `.env` (the README no longer repeats it).
+- The old dev database password (and pgAdmin `admin`/`admin`) remain in public git history. The user decided against rewriting history; rotating the password makes the old value useless. Until rotated, the running stack still uses the old value from the local `.env`.
 
 ## 7. Verification commands
 
@@ -101,3 +103,6 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Merged PR #1 into `main` with a merge commit (`8a1865b`); `gh` deleted `chore/java25-boot4`.
 - Deleted the untracked `.github/modernize/` folder (the abandoned August attempt; never tracked in git).
 - Before deleting `appmod/java-upgrade-20260811013250`, found that its commit `915fbc6` (stop documenting the dev database password in the README) existed on no other branch. At the user's request, ported that change to `main`'s README, then deleted the branch locally and on GitHub. Its other commits were the superseded Java 25 attempt and `40da2aa`, which is also on `feature/demand-forecasting-pipeline`.
+- Credentials (branch `chore/externalize-credentials`): the repo is public, so the dev DB password was exposed in `docker-compose.yml` and `application-dev.yml`. `.env` was already gitignored and never committed (the earlier note in section 6 saying otherwise was wrong). `docker-compose.yml` now reads `DB_USERNAME`, `DB_PASSWORD`, `PGADMIN_EMAIL` and `PGADMIN_PASSWORD` from `.env` and refuses to start if a password is missing; all published ports bind to `127.0.0.1`; the Postgres healthcheck uses `$${POSTGRES_USER}`. `application-dev.yml` imports `optional:file:.env[.properties]` and uses `${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}` (no password default). Added `.env.example`; README explains the setup. Added `PGADMIN_EMAIL`/`PGADMIN_PASSWORD` to the user's local `.env` with the current values so the stack keeps working.
+- Verification: 17 tests pass; recreated the compose stack (kept the `wms_postgres_data` volume; a Docker recreate race left temporary container names, fixed with `docker compose down` and `up -d`, no `-v`); app connects ("Schema is up to date"), pgAdmin login works with the `.env` values, Windows can still reach ports 8080, 5050 and 5432 on localhost; the dev profile connects using `.env` and fails without it.
+- Rotation commands for the user (run from the repo root, with the stack up): pick a new password, then `docker exec -it wms-postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'NEW_PASSWORD';"`, set `DB_PASSWORD=NEW_PASSWORD` in `.env`, and run `docker compose up -d` to restart the app. For pgAdmin, change `PGADMIN_PASSWORD` in `.env` and run `docker compose up -d pgadmin` (it has no volume, so it re-initialises with the new password). If a native local Postgres also uses the old password, run the same `ALTER USER` there.

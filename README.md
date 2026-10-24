@@ -41,15 +41,23 @@ git clone https://github.com/Yashuchirag/wms.git
 cd wms
 ```
 
-2. Start all services:
+2. Create your local `.env` and set real passwords for `DB_PASSWORD` and `PGADMIN_PASSWORD`:
+```bash
+cp .env.example .env
+```
+`.env` is gitignored. Never commit it. Compose refuses to start if either password is missing.
+
+3. Start all services:
 ```bash
 docker compose up -d
 ```
 
-3. Access the application:
+4. Access the application:
     - API: http://localhost:8080
     - Swagger UI: http://localhost:8080/swagger-ui.html
-    - PgAdmin: http://localhost:5050 (admin@wms.com / admin)
+    - PgAdmin: http://localhost:5050 (log in with `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` from `.env`)
+
+All ports are bound to `127.0.0.1`, so the services are only reachable from your own machine.
 
 ### Option 2: Local Development
 
@@ -58,7 +66,7 @@ docker compose up -d
 CREATE DATABASE wms;
 ```
 
-2. Update the `spring.datasource` credentials in `application-dev.yml` to match your local `postgres` user. Flyway uses the same connection.
+2. Copy `.env.example` to `.env` and set `DB_PASSWORD` (and `DB_URL` / `DB_USERNAME` if they differ) to match your local `postgres` user. The `dev` profile reads `.env` from the directory you start the app in, and real environment variables take precedence. Flyway uses the same connection. If the password is missing, startup fails with "password authentication failed".
 
 3. Build and run:
 ```bash
