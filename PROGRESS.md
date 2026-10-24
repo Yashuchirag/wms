@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), so that branch is on Java 25 / Spring Boot 4.1 with no passwords in tracked files. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
+The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
 ## 2. Goal
 
@@ -42,6 +42,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Credentials: move out of tracked files into `.env` | DONE |
 | Credentials: rotate the dev DB and pgAdmin passwords | TODO (user) |
 | Merge `main` into `feature/demand-forecasting-pipeline` | DONE |
+| Merge `feature/demand-forecasting-pipeline` into `main` (PR #3) | DONE |
 
 ## 5. Environment notes
 
@@ -110,3 +111,4 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Pushed `chore/externalize-credentials` and opened PR #2 to `main`.
 - Merged PR #2 into `main` (`450bdf9`).
 - Scanned `feature/demand-forecasting-pipeline` for secrets: the forecasting Python code has none (no DSN, tokens or DB URLs; `sentry-sdk` is a dependency but unconfigured); its only exposure was the pre-fix copies of `docker-compose.yml`, `application-dev.yml` and `README.md`. Merged `main` into the branch (`1708f5a`, no conflicts, no changes under `forecasting/`). Java tests (17) and forecasting pytest (4) pass on the branch. `forecasting/.gitignore` covers `.venv/`, `mlflow.db` and data; there is no `.env` under `forecasting/`.
+- At the user's request, opened PR #3 to merge `feature/demand-forecasting-pipeline` into `main` (the branch already contained `main`, so no conflicts) and merged it with a merge commit, keeping the feature branch.
