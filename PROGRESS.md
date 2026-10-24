@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-PR #1 (https://github.com/Yashuchirag/wms/pull/1) from `chore/java25-boot4` to `main` is open and waiting for the user's review. Next: merge it with a merge commit (`gh pr merge 1 --merge --delete-branch`), not squash, so each phase stays individually revertable. Then follow the post-merge steps in the 2026-10-23 session log.
+The upgrade is complete: PR #1 was merged into `main` as merge commit `8a1865b`. Nothing in the upgrade itself is outstanding. Remaining follow-ups belong to the user: run `docker compose up --build`, point the IDE at JDK 25, and merge `main` into `feature/demand-forecasting-pipeline`. Phase 3 (optional runtime polish) was skipped and can be picked up as new work. Section 6 lists the pre-existing issues found along the way, as candidates for future work.
 
 ## 2. Goal
 
@@ -18,7 +18,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 
 ## 3. Decisions
 
-- Work happens on branch `chore/java25-boot4`, cut from `main`, in the single checkout at `/root/Personal_Projects/wms` (no separate worktree). `main` has no `forecasting/`, so before switching to this branch, commit or stash any uncommitted change under `forecasting/` on `feature/demand-forecasting-pipeline`, or the checkout will refuse.
+- Work happened on branch `chore/java25-boot4`, cut from `main`, in the single checkout at `/root/Personal_Projects/wms` (no separate worktree). The branch was merged via PR #1 and deleted.
 - Integration tests use the `itest` profile, not `dev`. Originally this was because `application-dev.yml` set `spring.flyway.url` explicitly, which Testcontainers' `@ServiceConnection` does not override. That block was removed in Phase 4, but `itest` stays so tests never pick up dev-only settings such as `clean-disabled: false` and DEBUG logging.
 - One HTTP-level contract test replaces the planned per-controller `@WebMvcTest` classes. It exercises the real Jackson, Hibernate and Flyway stack, which is what the Boot 4 upgrade changes.
 - Tests call the API with the JDK `HttpClient`, not MockMvc or TestRestTemplate, because both of those move packages in Boot 4. The tests should not need edits during Phase 2, so that a green run proves behaviour is unchanged.
@@ -34,10 +34,11 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase 0: API contract test with baseline snapshots | DONE |
 | Phase 1 | DONE |
 | Phase 2 | DONE |
-| Phase 3 | TODO |
+| Phase 3 | SKIPPED (optional, not requested) |
 | Phase 4: remove properties migrator, update README, optional cleanups | DONE |
 | Phase 4: open PR to `main` | DONE |
-| Phase 4: merge with a merge commit | TODO |
+| Phase 4: merge with a merge commit | DONE |
+| Cleanup: delete `appmod/java-upgrade-20260811013250` and `.github/modernize/` | DONE |
 
 ## 5. Environment notes
 
@@ -56,8 +57,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Over-reserving stock returns 400 via `IllegalArgumentException`, although an unused `InsufficientStockException` handler returning 409 exists. The contract test pins the current 400.
 - On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. ModelMapper 3.2.8 (Phase 2) removed its warning; the Lombok one (still present with 1.18.48) needs an upstream fix.
 - With Jackson 3, `/actuator/health` orders its keys differently (`components` before `status`). Our own endpoints' JSON is byte-identical apart from timestamps. Nothing known depends on key order; the compose healthcheck uses `pg_isready`.
-- Database password is committed in `docker-compose.yml`, `application-dev.yml` and `.env`.
-- `.github/modernize/` in the original checkout holds an abandoned August upgrade attempt; delete it once this upgrade lands.
+- Database password is committed in `docker-compose.yml`, `application-dev.yml` and `.env` (the README no longer repeats it).
 
 ## 7. Verification commands
 
@@ -98,3 +98,6 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Verification: 17 tests pass on JDK 25, the jar contains neither H2 nor the migrator, and the packaged jar with the `dev` profile migrated a fresh local Postgres through the main datasource and served data.
 - Post-merge steps for the user: `git checkout main && git pull`; `docker compose up --build`; point the IDE at JDK 25; delete the `appmod/java-upgrade-20260811013250` branch and `.github/modernize/`; merge `main` into `feature/demand-forecasting-pipeline`.
 - Pushed Phase 4 step 1 and opened PR #1 to `main` (7 commits, 19 files).
+- Merged PR #1 into `main` with a merge commit (`8a1865b`); `gh` deleted `chore/java25-boot4`.
+- Deleted the untracked `.github/modernize/` folder (the abandoned August attempt; never tracked in git).
+- Before deleting `appmod/java-upgrade-20260811013250`, found that its commit `915fbc6` (stop documenting the dev database password in the README) existed on no other branch. At the user's request, ported that change to `main`'s README, then deleted the branch locally and on GitHub. Its other commits were the superseded Java 25 attempt and `40da2aa`, which is also on `feature/demand-forecasting-pipeline`.
