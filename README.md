@@ -1,6 +1,6 @@
 # Warehouse Management System (WMS)
 
-A comprehensive warehouse management system built with Spring Boot 3 and Java 21.
+A comprehensive warehouse management system built with Spring Boot 4 and Java 25.
 
 ## Features
 
@@ -15,18 +15,18 @@ A comprehensive warehouse management system built with Spring Boot 3 and Java 21
 
 ## Technology Stack
 
-- **Java**: 21
-- **Spring Boot**: 3.5.3
+- **Java**: 25
+- **Spring Boot**: 4.1.2
 - **Database**: PostgreSQL 16
-- **Migration**: Flyway 11.8.2
+- **Migration**: Flyway 12.4.0
 - **Build Tool**: Maven
-- **Documentation**: Swagger/OpenAPI 3 (springdoc-openapi 2.8.6)
-- **Utilities**: Lombok 1.18.38, ModelMapper 3.2.4
+- **Documentation**: Swagger/OpenAPI 3 (springdoc-openapi 3.1.1)
+- **Utilities**: Lombok 1.18.48, ModelMapper 3.2.8
 - **Containerization**: Docker & Docker Compose
 
 ## Prerequisites
 
-- Java 21 or higher
+- Java 25 or higher
 - Maven 3.9+
 - PostgreSQL 16+ (or use Docker)
 - Docker & Docker Compose (optional)
@@ -58,7 +58,7 @@ docker compose up -d
 CREATE DATABASE wms;
 ```
 
-2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password `274136`. Update the `spring.datasource` and `spring.flyway` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment.
+2. By default, `application-dev.yml` connects as `postgres` on `localhost:5432/wms` with the password `274136`. Update the `spring.datasource` credentials in `application-dev.yml` (or your local `postgres` user's password) to match your environment. Flyway uses the same connection.
 
 3. Build and run:
 ```bash
@@ -147,6 +147,8 @@ Run tests:
 ```bash
 ./mvnw test
 ```
+
+Integration tests start a throwaway PostgreSQL 16 container through Testcontainers, so Docker must be running. No local database is needed.
 
 Run with coverage:
 ```bash

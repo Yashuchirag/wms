@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phases 0, 1 and 2 are done (Java 25, Spring Boot 4.1.2). Next is Phase 3, which is optional runtime polish (Dockerfile layer extraction, JVM flags, virtual threads), or go straight to Phase 4: remove `spring-boot-properties-migrator` from `pom.xml`, update the README to say Java 25 / Spring Boot 4.1, run the Phase 2 verification once more, then open a PR from `chore/java25-boot4` to `main`. Ask the user which of the section 6 cleanups (prometheus exposure, `application.properties`, duplicate dev Flyway block, H2) they want in this PR.
+Phases 0 to 2 and Phase 4 step 1 are done. Next: open a PR from `chore/java25-boot4` to `main` (`gh pr create --base main`), then merge it with a merge commit (not squash) so each phase stays individually revertable. Phase 3 (optional runtime polish) is skipped unless the user asks for it. After merging, follow the post-merge steps in the session log of 2026-10-23.
 
 ## 2. Goal
 
@@ -19,7 +19,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 ## 3. Decisions
 
 - Work happens on branch `chore/java25-boot4`, cut from `main`, in the single checkout at `/root/Personal_Projects/wms` (no separate worktree). `main` has no `forecasting/`, so before switching to this branch, commit or stash any uncommitted change under `forecasting/` on `feature/demand-forecasting-pipeline`, or the checkout will refuse.
-- Integration tests use the `itest` profile, not `dev`. `application-dev.yml` sets `spring.flyway.url` explicitly, which Testcontainers' `@ServiceConnection` does not override, so Flyway would still try `localhost:5432`.
+- Integration tests use the `itest` profile, not `dev`. Originally this was because `application-dev.yml` set `spring.flyway.url` explicitly, which Testcontainers' `@ServiceConnection` does not override. That block was removed in Phase 4, but `itest` stays so tests never pick up dev-only settings such as `clean-disabled: false` and DEBUG logging.
 - One HTTP-level contract test replaces the planned per-controller `@WebMvcTest` classes. It exercises the real Jackson, Hibernate and Flyway stack, which is what the Boot 4 upgrade changes.
 - Tests call the API with the JDK `HttpClient`, not MockMvc or TestRestTemplate, because both of those move packages in Boot 4. The tests should not need edits during Phase 2, so that a green run proves behaviour is unchanged.
 - Baseline JSON in `src/test/resources/api-baseline/` was captured from the running app on JDK 21 / Boot 3.5.3. `api-docs.json` there is a reference for manual diffing only; springdoc 3 is expected to change it in harmless ways, so no test asserts it.
@@ -35,7 +35,9 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Phase 1 | DONE |
 | Phase 2 | DONE |
 | Phase 3 | TODO |
-| Phase 4 | TODO |
+| Phase 4: remove properties migrator, update README, optional cleanups | DONE |
+| Phase 4: open PR to `main` | TODO |
+| Phase 4: merge with a merge commit | TODO |
 
 ## 5. Environment notes
 
@@ -48,10 +50,8 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 ## 6. Noticed, not fixed
 
 - `mvnw` lacks the executable bit in git (the Dockerfile works around it with `chmod`).
-- `application.properties` sets `spring.application.name=Warehouse`, which conflicts with `warehouse-management-system` in `application.yml`.
-- Actuator exposes `prometheus`, but `micrometer-registry-prometheus` is not a dependency, so the endpoint does not exist.
-- `application.yml` sets `hibernate.dialect` explicitly, which is unnecessary and deprecated.
-- H2 is a test dependency but nothing uses it.
+- `GlobalExceptionHandler`'s catch-all `@ExceptionHandler(Exception.class)` also catches Spring's `NoResourceFoundException`, so every unknown URL returns 500 (logged at ERROR) instead of 404. This predates the upgrade.
+- README's "Run with coverage" command (`jacoco:report`) does not work: no JaCoCo plugin is configured in `pom.xml`.
 - `InventoryService.adjustStock` and `reserveStock` return a stale `availableQuantity` in the response (the `@PreUpdate` recalculation runs after the DTO is built). Persisted data is correct. The contract test deliberately checks state via a follow-up GET.
 - Over-reserving stock returns 400 via `IllegalArgumentException`, although an unused `InsufficientStockException` handler returning 409 exists. The contract test pins the current 400.
 - On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. ModelMapper 3.2.8 (Phase 2) removed its warning; the Lombok one (still present with 1.18.48) needs an upstream fix.
@@ -92,3 +92,8 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Phase 2 verification passes: 17 tests on Spring Boot 4.1.2 / Hibernate 7.4.13 / Jackson 3.1.7, with the contract and migration tests unchanged apart from the Testcontainers import.
 - Docker smoke: a database migrated by the Phase 1 image (Flyway 11.8) was validated by the Phase 2 image (Flyway 12.4) with "Schema is up to date", `/actuator/flyway` lists V1 to V6 as SUCCESS, Swagger UI loads, and the prod profile logs no migrator warnings. The `dev` profile also starts cleanly from the packaged jar.
 - `/api-docs` diff against the baseline: springdoc 3 now marks `@NotBlank` fields (`sku`, `name`, `code`, `trackingNumber`) as `required`. No other changes.
+- Pushed Phase 2.
+- Phase 4 step 1: removed `spring-boot-properties-migrator`; updated README (Java 25, Spring Boot 4.1.2, Flyway 12.4.0, springdoc 3.1.1, Lombok 1.18.48, ModelMapper 3.2.8, Docker needed for tests, dev Flyway now shares the datasource). README uses CRLF line endings with no final newline; preserve that when editing it.
+- Optional cleanups at the user's request: removed the unused H2 test dependency; removed `prometheus` from the actuator exposure list (no registry dependency, so it never worked); deleted `application.properties`, so `spring.application.name` is now `warehouse-management-system` from `application.yml` instead of `Warehouse`; removed the duplicate `url`/`user`/`password` from the dev Flyway block so Flyway uses the main datasource.
+- Verification: 17 tests pass on JDK 25, the jar contains neither H2 nor the migrator, and the packaged jar with the `dev` profile migrated a fresh local Postgres through the main datasource and served data.
+- Post-merge steps for the user: `git checkout main && git pull`; `docker compose up --build`; point the IDE at JDK 25; delete the `appmod/java-upgrade-20260811013250` branch and `.github/modernize/`; merge `main` into `feature/demand-forecasting-pipeline`.
