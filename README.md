@@ -6,8 +6,10 @@ A comprehensive warehouse management system built with Spring Boot 4 and Java 25
 
 - 📦 Real-time inventory tracking across multiple warehouses
 - 🏢 Warehouse and zone management
+- 🗄️ Storage locations (bins) per zone, with receiving and packing locations
+- 🔒 Concurrency-safe stock reservations that cannot oversell
 - 📊 Item catalog management with turnover rates
-- 🚚 Shipment tracking (inbound/outbound)
+- 🚚 Shipment tracking (inbound/outbound) with enforced status transitions
 - 🔄 Automated inventory reconciliation
 - 📈 Low stock alerts and reorder points
 - 🎯 Zone-based storage optimization
@@ -111,6 +113,23 @@ http://localhost:8080/swagger-ui.html
 - `POST /api/v1/shipments/{id}/process` - Process shipment
 - `PATCH /api/v1/shipments/{id}/status` - Update shipment status
 
+#### Location Management
+- `GET /api/v1/locations?zoneId=&type=`: List locations, optionally filtered by zone and type (both filters are optional)
+- `POST /api/v1/locations`: Create a location
+- `GET /api/v1/locations/{id}`: Get a location by ID
+- `PUT /api/v1/locations/{id}`: Update a location (it cannot move to another warehouse)
+- `DELETE /api/v1/locations/{id}`: Delete a location that holds no stock
+
+Location types are `RECEIVING`, `PICK_FACE`, `RESERVE`, `STAGING`, `PACK` and `DOCK`. A location code is unique within its warehouse, and a location's zone must belong to the same warehouse. To retire a bin without deleting it, set `isActive` to `false`.
+
+### Error Responses
+
+| Status | When |
+|---|---|
+| 400 | Request validation fails (field errors are listed under `errors`), or a request is invalid, such as a zone from another warehouse |
+| 404 | The requested record does not exist |
+| 409 | Not enough available stock to reserve or adjust, an illegal shipment status change, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
+
 ## Database Schema
 
 The system uses PostgreSQL with Flyway migrations. Key tables:
@@ -120,6 +139,17 @@ The system uses PostgreSQL with Flyway migrations. Key tables:
 - **items**: Product catalog
 - **inventory**: Stock levels per warehouse/zone
 - **shipments**: Inbound and outbound shipments
+- **locations**: Bins within a warehouse, optionally inside a zone, with a type, pick sequence and capacity limits
+- **lpns**: License plates (pallets, cases, totes, cartons) that can sit in a location and nest inside each other
+
+Integrity rules enforced by the database:
+
+- `reserved_quantity` can never exceed `quantity` on an inventory row.
+- An item appears at most once per warehouse and zone, and a row without a zone counts as one value (`UNIQUE NULLS NOT DISTINCT`).
+- An item that still has inventory cannot be deleted, and neither can a zone that still has locations or a location that still holds inventory or LPNs.
+- `inventory.location_id` and `inventory.lpn_id` exist for upcoming ledger and put-away work but are not exposed through the API yet.
+
+Migrations live in `src/main/resources/db/migration` (V1 to V9). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
 
 ## Configuration
 
@@ -157,6 +187,8 @@ Run tests:
 ```
 
 Integration tests start a throwaway PostgreSQL 16 container through Testcontainers, so Docker must be running. No local database is needed.
+
+The suite includes an HTTP contract test that pins the existing API responses, a migration test for every Flyway version, and a concurrency test that sends 50 simultaneous reservations against one inventory row.
 
 Run with coverage:
 ```bash
@@ -201,6 +233,12 @@ src/
 - Zone-based storage
 - Reserved quantity tracking
 - Low stock alerts
+- Reserve and adjust lock the inventory row (`SELECT ... FOR UPDATE`), so concurrent requests cannot lose updates or oversell. Other writes are protected by an optimistic `@Version` check.
+
+### Storage Locations
+- Three seeded bins per seeded zone (reserve bins in the bulk zone, pick faces elsewhere)
+- `RCV-01` (receiving) and `PACK-01` (packing) in WH-001, outside any zone
+- Pick sequence per bin, for ordering pick paths later
 
 ### Warehouse Zoning Strategy
 - HIGH_DEMAND zones for fast-moving items
@@ -211,14 +249,29 @@ src/
 ### Shipment Management
 - Inbound/outbound shipments
 - Tracking number generation
-- Status tracking (Pending → Processing → Shipped → Delivered)
-- Automated inventory updates
+- Status tracking (Pending → Processing → Shipped → Delivered, and Pending or Processing → Cancelled)
+- Processing an outbound shipment reserves its stock. Only `POST /api/v1/shipments/{id}/process` moves a shipment from PENDING to PROCESSING, so the reservation cannot be skipped, and processing the same shipment twice returns 409.
+- Any other illegal status change returns 409.
+- Shipping does not yet decrement stock, and cancelling does not yet release a reservation. Both arrive with the inventory ledger.
 
 ### Operational Insights
 - Total inventory per warehouse
 - Low stock item reports
 - Shipment freshness tracking
 - Turnover rate analytics
+
+## Roadmap
+
+The system is being extended one phase at a time, each in its own pull request:
+
+| Phase | Scope | Status |
+|---|---|---|
+| A | Inventory integrity and concurrency | Done |
+| B | Storage locations and LPNs | Done |
+| C | Inventory ledger and idempotent stock changes | Planned |
+| D | Outbound orders and allocation | Planned |
+| E | Task engine (put-away, pick, replenish, count) | Planned |
+| F | Transactional outbox for events | Planned |
 
 ## Contributing
 
