@@ -2,7 +2,9 @@
 
 ## 1. Next action
 
-The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
+Phase A of `WMS_IMPLEMENTATION_PLAN.md` (inventory integrity, V7) is implemented and committed on branch `feat/phase-a-inventory-integrity`, cut from `main` at `997bafb`. It is not pushed. Next: the user reviews the branch, then decides whether to push and open a PR. Do not start Phase B until Phase A is merged and the user says so. `WMS_IMPLEMENTATION_PLAN.md` is deliberately left untracked (user decision), so it exists only in this checkout.
+
+Earlier: The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
 ## 2. Goal
 
@@ -15,6 +17,8 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | 2 | Boot 3.5 to 4.1 (`spring-boot-starter-webmvc`, `spring-boot-starter-flyway`, springdoc 3.x, Testcontainers 2.x) |
 | 3 | Runtime and container polish (optional) |
 | 4 | Final checklist and merge |
+
+That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_PLAN.md` (Phases A to F: inventory integrity, locations, ledger, orders, tasks, outbox), one phase per branch and PR.
 
 ## 3. Decisions
 
@@ -43,11 +47,14 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | Credentials: rotate the dev DB and pgAdmin passwords | TODO (user) |
 | Merge `main` into `feature/demand-forecasting-pipeline` | DONE |
 | Merge `feature/demand-forecasting-pipeline` into `main` (PR #3) | DONE |
+| Phase A: inventory integrity and concurrency (V7) | DONE (committed, not pushed) |
+| Phase A: push and open PR | TODO (waiting for the user) |
 
 ## 5. Environment notes
 
 - JDK 21 at `/usr/lib/jvm/java-21-openjdk-amd64`, JDK 25 at `/usr/lib/jvm/java-25-openjdk-amd64`. The default `java` on PATH is 25, so set `JAVA_HOME` explicitly for every build.
 - `mvnw` is committed without the executable bit (`core.fileMode=false`), so run it as `sh mvnw`.
+- The Docker daemon does not autostart (no systemd in this WSL session). `service docker start` fails with `ulimit: error setting limit (Invalid argument)` because the shell's soft fd limit (1048576) is above the hard limit the init script sets (524288). Start it with `bash -c 'ulimit -Sn 1024; service docker start'`.
 - Docker Engine 29.x is available locally; Testcontainers needs it. Engine 29 rejects Docker API clients older than 1.44, so Testcontainers below 1.21.4 fails with "client version 1.32 is too old". Phase 0 overrode `testcontainers.version` to 1.21.4 for that reason; Boot 3.5.16 manages 1.21.4 itself, so Phase 1 removed the override. In Phase 2, Boot 4 brings Testcontainers 2.x: the artifact becomes `testcontainers-postgresql` and `PostgreSQLContainer` moves to `org.testcontainers.postgresql`.
 - The VS Code Java extension rebuilds into `target/` when `pom.xml` changes, which can make `mvn clean` fail with "Failed to delete .../target". Rerunning the command fixes it.
 - The three `@SpringBootTest` classes use identical annotations so they share one cached context and one container. Keep it that way when adding integration tests.
@@ -57,8 +64,13 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - `mvnw` lacks the executable bit in git (the Dockerfile works around it with `chmod`).
 - `GlobalExceptionHandler`'s catch-all `@ExceptionHandler(Exception.class)` also catches Spring's `NoResourceFoundException`, so every unknown URL returns 500 (logged at ERROR) instead of 404. This predates the upgrade.
 - README's "Run with coverage" command (`jacoco:report`) does not work: no JaCoCo plugin is configured in `pom.xml`.
-- `InventoryService.adjustStock` and `reserveStock` return a stale `availableQuantity` in the response (the `@PreUpdate` recalculation runs after the DTO is built). Persisted data is correct. The contract test deliberately checks state via a follow-up GET.
-- Over-reserving stock returns 400 via `IllegalArgumentException`, although an unused `InsufficientStockException` handler returning 409 exists. The contract test pins the current 400.
+- Fixed in Phase A: `adjustStock` and `reserveStock` used to return a stale `availableQuantity`; over-reserving used to return 400 instead of 409.
+- `processShipment` reserves from the lowest-id inventory row for the item in that warehouse, whatever its zone. If that row is short but another zone has stock, the reservation fails with 409. Phase D's allocation replaces this.
+- Cancelling a PROCESSING outbound shipment keeps its reservation, and SHIPPED does not decrement stock. Both are deliberate until Phase C (user decision, 2026-10-30).
+- `PUT /api/v1/inventory/{id}` does not take a row lock; a concurrent change is caught by `@Version` and returns 409. It can also still try to set `reservedQuantity` above `quantity`, which the CHECK rejects with the generic 409 "The request conflicts with existing data." rather than a specific message.
+- The `DataIntegrityViolationException` handler is global, so other constraint violations that used to return 500 (for example a duplicate shipment `trackingNumber`, or a second inventory row for the same item, warehouse and zone) now return 409 too.
+- `DELETE /api/v1/inventory/{id}` still deletes a row that has reserved stock.
+- No lock timeout is set, so a request waits as long as another transaction holds the inventory or shipment row lock.
 - On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. ModelMapper 3.2.8 (Phase 2) removed its warning; the Lombok one (still present with 1.18.48) needs an upstream fix.
 - With Jackson 3, `/actuator/health` orders its keys differently (`components` before `status`). Our own endpoints' JSON is byte-identical apart from timestamps. Nothing known depends on key order; the compose healthcheck uses `pg_isready`.
 - The old dev database password (and pgAdmin `admin`/`admin`) remain in public git history. The user decided against rewriting history; rotating the password makes the old value useless. Until rotated, the running stack still uses the old value from the local `.env`.
@@ -70,6 +82,7 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 | 0 | `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 sh mvnw -B clean verify` | BUILD SUCCESS, all tests green |
 | 1 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase1 .` | BUILD SUCCESS, no Lombok errors, no Mockito dynamic agent warning, image builds |
 | 2 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase2 .` | BUILD SUCCESS with no edits to the contract or migration tests beyond Testcontainers 2.x imports; no properties-migrator or `HHH90000025` warnings in the log |
+| A | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase-a .` | BUILD SUCCESS, 24 tests green including `InventoryConcurrencyTest`; image builds |
 
 ## 8. Session log
 
@@ -112,3 +125,19 @@ Upgrade the Java application (not `forecasting/`) from Java 21 / Spring Boot 3.5
 - Merged PR #2 into `main` (`450bdf9`).
 - Scanned `feature/demand-forecasting-pipeline` for secrets: the forecasting Python code has none (no DSN, tokens or DB URLs; `sentry-sdk` is a dependency but unconfigured); its only exposure was the pre-fix copies of `docker-compose.yml`, `application-dev.yml` and `README.md`. Merged `main` into the branch (`1708f5a`, no conflicts, no changes under `forecasting/`). Java tests (17) and forecasting pytest (4) pass on the branch. `forecasting/.gitignore` covers `.venv/`, `mlflow.db` and data; there is no `.env` under `forecasting/`.
 - At the user's request, opened PR #3 to merge `feature/demand-forecasting-pipeline` into `main` (the branch already contained `main`, so no conflicts) and merged it with a merge commit, keeping the feature branch.
+
+### 2026-10-30
+
+- Started `WMS_IMPLEMENTATION_PLAN.md`, Phase A. The Docker daemon was down and `service docker start` failed on a `ulimit` error (cause and fix in section 5). After starting it, the baseline on `main` passed: 17 tests, BUILD SUCCESS on JDK 25.
+- Created `feat/phase-a-inventory-integrity` from `main` at `997bafb` (same as `origin/main`).
+- User decisions: keep `ON DELETE RESTRICT` on `inventory.item_id`; `PATCH /shipments/{id}/status` must not move a shipment to PROCESSING (only `/process` does, because it reserves stock); cancelling a PROCESSING shipment keeps its reservation for now; do not commit `WMS_IMPLEMENTATION_PLAN.md`. The user did not answer the locking question, so the recommended `PESSIMISTIC_WRITE` was used.
+- Wrote `InventoryConcurrencyTest` first (50 concurrent `PATCH /reserve?quantity=1` on virtual threads against a row with quantity 30). On the old code it failed: all 50 requests returned 200 (an oversell), but `reserved_quantity` ended at 6, so 44 updates were lost.
+- Locking choice: `reserveStock` and `adjustStock` load the row with `SELECT ... FOR UPDATE` (`InventoryRepository.findByIdForUpdate`). `@Version` was added as a backstop for paths that do not lock. @Version plus retry was rejected because 50 contenders on one row would exhaust 3 retries and reject requests that had stock, and because a correct retry needs a fresh transaction per attempt (the conflict surfaces at flush, and `processShipment` calls `reserveStock` inside its own transaction).
+- `V7__inventory_integrity.sql`: `version` column, `chk_reserved_within_quantity`, `uq_inventory_item_warehouse_zone` recreated as `UNIQUE NULLS NOT DISTINCT`, `fk_inventory_item` recreated as `ON DELETE RESTRICT`.
+- `InventoryService`: both stock methods throw `InsufficientStockException` (409). `adjustStock` now rejects a result below `reserved_quantity` (it used to check only below zero), otherwise the new CHECK would surface as a 500 at commit. `convertToDTO` computes `availableQuantity`, which fixes the stale response value for every endpoint.
+- `ShipmentService`: `processShipment` and `updateShipmentStatus` lock the shipment row. `processShipment` accepts only PENDING. Status updates follow one allowed-moves map (PENDING to CANCELLED, PROCESSING to SHIPPED or CANCELLED, SHIPPED to DELIVERED). Illegal moves throw the new `InvalidStatusTransitionException` (409).
+- Found while implementing: `processShipment` called `getInventoryByItem`, which loaded the inventory entity unlocked into the same persistence context, so a later `FOR UPDATE` query would return that possibly stale instance. It now looks up only the id (`findIdsByItemIdAndWarehouseId`).
+- `GlobalExceptionHandler`: 409 "Conflict" for `InvalidStatusTransitionException`, `ObjectOptimisticLockingFailureException` and `DataIntegrityViolationException` (the last one covers deleting an item that still has stock).
+- Deliberate test changes: `ApiContractTest` over-reserve 400 to 409 (error "Insufficient Stock", same message); the adjust and reserve responses are now asserted directly, not only through a follow-up GET; deleting an item that has stock returns 409. `FlywayMigrationTest` expects V7 and checks that the CHECK rejects an oversell and that the unique constraint rejects a second null-zone row. `InventoryServiceTest` stubs `findByIdForUpdate` instead of `findById`. List baselines are unchanged, and the new tests create and delete their own rows so the STRICT baselines stay valid.
+- New `ShipmentWorkflowTest`: double `/process` reserves once and the second call returns 409; an illegal transition returns 409; `PATCH status=PROCESSING` returns 409 and reserves nothing; the legal path PENDING, PROCESSING, SHIPPED, DELIVERED works.
+- Verification: `clean verify` passes with 24 tests in one shared Spring context; `InventoryConcurrencyTest` passed on two more isolated runs. `docker build -t wms:phase-a .` succeeds. A smoke run of the image with the `prod` profile against a throwaway `postgres:16-alpine` reached health UP, returned fresh quantities from `/reserve`, and returned 409 for an over-reserve and for deleting a stocked item (which proves V7's RESTRICT key is in place). The smoke containers and network were removed afterwards.
