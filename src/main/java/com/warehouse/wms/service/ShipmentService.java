@@ -1,10 +1,13 @@
 package com.warehouse.wms.service;
 
 import com.warehouse.wms.dto.ShipmentDTO;
+import com.warehouse.wms.exception.InvalidStatusTransitionException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.model.Item;
 import com.warehouse.wms.model.Shipment;
+import com.warehouse.wms.model.Shipment.ShipmentStatus;
 import com.warehouse.wms.model.Warehouse;
+import com.warehouse.wms.repository.InventoryRepository;
 import com.warehouse.wms.repository.ItemRepository;
 import com.warehouse.wms.repository.ShipmentRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
@@ -16,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,10 +30,19 @@ import java.util.stream.Collectors;
 @Transactional
 public class ShipmentService {
 
+    // PENDING -> PROCESSING is only reachable through processShipment, which reserves stock
+    private static final Map<ShipmentStatus, Set<ShipmentStatus>> ALLOWED_STATUS_UPDATES = Map.of(
+            ShipmentStatus.PENDING, Set.of(ShipmentStatus.CANCELLED),
+            ShipmentStatus.PROCESSING, Set.of(ShipmentStatus.SHIPPED, ShipmentStatus.CANCELLED),
+            ShipmentStatus.SHIPPED, Set.of(ShipmentStatus.DELIVERED),
+            ShipmentStatus.DELIVERED, Set.of(),
+            ShipmentStatus.CANCELLED, Set.of());
+
     private final ShipmentRepository shipmentRepository;
     private final WarehouseRepository warehouseRepository;
     private final ItemRepository itemRepository;
     private final InventoryService inventoryService;
+    private final InventoryRepository inventoryRepository;
     private final ModelMapper modelMapper;
 
     public ShipmentDTO getShipmentById(Long id) {
@@ -92,8 +106,14 @@ public class ShipmentService {
     public ShipmentDTO updateShipmentStatus(Long id, Shipment.ShipmentStatus status) {
         log.info("Updating shipment status for id: {} to {}", id, status);
 
-        Shipment shipment = shipmentRepository.findById(id)
+        Shipment shipment = shipmentRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment not found"));
+
+        if (!ALLOWED_STATUS_UPDATES.get(shipment.getStatus()).contains(status)) {
+            throw new InvalidStatusTransitionException(status == ShipmentStatus.PROCESSING
+                    ? "Use POST /api/v1/shipments/" + id + "/process to move a shipment to PROCESSING"
+                    : "Cannot change shipment status from " + shipment.getStatus() + " to " + status);
+        }
 
         shipment.setStatus(status);
 
@@ -109,18 +129,23 @@ public class ShipmentService {
     public ShipmentDTO processShipment(Long id) {
         log.info("Processing shipment id: {}", id);
 
-        Shipment shipment = shipmentRepository.findById(id)
+        Shipment shipment = shipmentRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment not found"));
+
+        if (shipment.getStatus() != ShipmentStatus.PENDING) {
+            throw new InvalidStatusTransitionException(
+                    "Only PENDING shipments can be processed; shipment is " + shipment.getStatus());
+        }
 
         if (shipment.getType() == Shipment.ShipmentType.OUTBOUND) {
             // Reserve inventory for outbound shipment
-            var inventory = inventoryService.getInventoryByItem(shipment.getItem().getId())
+            Long inventoryId = inventoryRepository.findIdsByItemIdAndWarehouseId(
+                            shipment.getItem().getId(), shipment.getWarehouse().getId())
                     .stream()
-                    .filter(inv -> inv.getWarehouseId().equals(shipment.getWarehouse().getId()))
                     .findFirst()
                     .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
 
-            inventoryService.reserveStock(inventory.getId(), shipment.getQuantity());
+            inventoryService.reserveStock(inventoryId, shipment.getQuantity());
         }
 
         shipment.setStatus(Shipment.ShipmentStatus.PROCESSING);
