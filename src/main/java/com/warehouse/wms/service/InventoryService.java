@@ -1,6 +1,7 @@
 package com.warehouse.wms.service;
 
 import com.warehouse.wms.dto.InventoryDTO;
+import com.warehouse.wms.exception.InsufficientStockException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.model.Inventory;
 import com.warehouse.wms.model.Item;
@@ -128,12 +129,12 @@ public class InventoryService {
     public InventoryDTO adjustStock(Long id, Integer adjustment, String reason) {
         log.info("Adjusting stock for inventory id: {} by {}", id, adjustment);
 
-        Inventory inventory = inventoryRepository.findById(id)
+        Inventory inventory = inventoryRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
 
         Integer newQuantity = inventory.getQuantity() + adjustment;
-        if (newQuantity < 0) {
-            throw new IllegalArgumentException("Insufficient stock");
+        if (newQuantity < inventory.getReservedQuantity()) {
+            throw new InsufficientStockException("Insufficient stock");
         }
 
         inventory.setQuantity(newQuantity);
@@ -148,11 +149,11 @@ public class InventoryService {
     public InventoryDTO reserveStock(Long id, Integer quantity) {
         log.info("Reserving {} units for inventory id: {}", quantity, id);
 
-        Inventory inventory = inventoryRepository.findById(id)
+        Inventory inventory = inventoryRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
 
         if (inventory.getAvailableQuantity() < quantity) {
-            throw new IllegalArgumentException("Insufficient available stock");
+            throw new InsufficientStockException("Insufficient available stock");
         }
 
         inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
@@ -178,6 +179,8 @@ public class InventoryService {
 
     private InventoryDTO convertToDTO(Inventory inventory) {
         InventoryDTO dto = modelMapper.map(inventory, InventoryDTO.class);
+        // Computed here because @PreUpdate only refreshes the entity at flush, after this mapping
+        dto.setAvailableQuantity(inventory.getQuantity() - inventory.getReservedQuantity());
         dto.setItemSku(inventory.getItem().getSku());
         dto.setItemName(inventory.getItem().getName());
         dto.setWarehouseCode(inventory.getWarehouse().getCode());

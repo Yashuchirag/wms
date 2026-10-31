@@ -51,6 +51,9 @@ public class Inventory {
     @Column(name = "last_stock_count")
     private LocalDateTime lastStockCount;
 
+    @Version
+    private Long version;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
