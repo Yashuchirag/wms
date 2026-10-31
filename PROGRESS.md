@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phase A of `WMS_IMPLEMENTATION_PLAN.md` (inventory integrity, V7) is implemented and committed on branch `feat/phase-a-inventory-integrity`, cut from `main` at `997bafb`. It is not pushed or merged. At the user's request, Phase B (locations and LPNs, V8 and V9) is stacked on it in branch `feat/phase-b-locations`, cut from `0a92291`. When Phase A merges, rebase or merge Phase B onto `main` before its PR. Phase B is implemented and committed there. Both branches are pushed: PR #4 (https://github.com/Yashuchirag/wms/pull/4) merges Phase A into `main`, and PR #5 (https://github.com/Yashuchirag/wms/pull/5) is based on the Phase A branch so it shows only Phase B. Next: the user reviews and merges PR #4, then PR #5 is retargeted to `main` (rebase it if GitHub reports conflicts) and merged. Do not start Phase C until the user says so. `WMS_IMPLEMENTATION_PLAN.md` is deliberately left untracked (user decision), so it exists only in this checkout.
+Phase A of `WMS_IMPLEMENTATION_PLAN.md` (inventory integrity, V7) is implemented and committed on branch `feat/phase-a-inventory-integrity`, cut from `main` at `997bafb`. It is not pushed or merged. At the user's request, Phase B (locations and LPNs, V8 and V9) is stacked on it in branch `feat/phase-b-locations`, cut from `0a92291`. When Phase A merges, rebase or merge Phase B onto `main` before its PR. Phase B is implemented and committed there. Both branches are pushed: PR #4 (https://github.com/Yashuchirag/wms/pull/4) merges Phase A into `main`, and PR #5 (https://github.com/Yashuchirag/wms/pull/5) is based on the Phase A branch so it shows only Phase B. PR #4 was merged into `main` with a merge commit (`5d1cef4`) and PR #5 was retargeted to `main` (mergeable, no conflicts). Next: the user reviews and merges PR #5. Do not start Phase C until the user says so. `WMS_IMPLEMENTATION_PLAN.md` is deliberately left untracked (user decision), so it exists only in this checkout.
 
 Earlier: The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
@@ -49,10 +49,11 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 | Merge `feature/demand-forecasting-pipeline` into `main` (PR #3) | DONE |
 | Phase A: inventory integrity and concurrency (V7) | DONE (committed, not pushed) |
 | Phase A: push and open PR (#4) | DONE |
-| Phase A: merge PR #4 | TODO (user review) |
+| Phase A: merge PR #4 | DONE (`5d1cef4`) |
 | Phase B: locations and LPNs (V8, V9), stacked on Phase A | DONE (committed, not pushed) |
 | Phase B: push and open stacked PR (#5, based on the Phase A branch) | DONE |
-| Phase B: retarget PR #5 to `main` after #4 merges, then merge | TODO (user review) |
+| Phase B: retarget PR #5 to `main` | DONE |
+| Phase B: merge PR #5 | TODO (user review) |
 
 ## 5. Environment notes
 
@@ -160,3 +161,4 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 - Tests: `FlywayMigrationTest` expects V8 and V9 (deliberate) and checks the seeds, the type and status CHECKs, the zone RESTRICT and the warehouse cascade. New `LocationApiTest` covers the filters, a create/get/update/delete round trip, per-warehouse code uniqueness, the zone/warehouse checks and validation errors; it deletes its own `TST-` rows. `ApiContractTest` is unchanged.
 - Verification: `clean verify` passes with 34 tests in one shared Spring context. `docker build -t wms:phase-b .` succeeds. A `prod` profile smoke run against a throwaway Postgres reached health UP, `/actuator/flyway` listed V1 to V9 as SUCCESS, `GET /api/v1/locations?type=RECEIVING` returned RCV-01, and deleting a seeded zone returned 409. The smoke containers were removed.
 - At the user's request, pushed both branches and opened PR #4 (Phase A into `main`) and PR #5 (Phase B, based on `feat/phase-a-inventory-integrity`), so each PR shows one phase. Nothing was pushed to `main` directly.
+- At the user's request, merged PR #4 with a merge commit (`5d1cef4`); `feat/phase-a-inventory-integrity` was kept. `gh pr edit 5 --base main` failed with a GraphQL error about the deprecated classic Projects API (a `gh` bug, not a repo problem), so PR #5 was retargeted with `gh api -X PATCH repos/Yashuchirag/wms/pulls/5 -f base=main`. It is mergeable with no conflicts and still shows only the Phase B commits.
