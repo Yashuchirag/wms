@@ -127,7 +127,7 @@ class InventoryServiceTest {
 
     @Test
     void testAdjustStock_Success() {
-        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
         when(modelMapper.map(inventory, InventoryDTO.class)).thenReturn(inventoryDTO);
 
@@ -139,7 +139,7 @@ class InventoryServiceTest {
 
     @Test
     void testReserveStock_Success() {
-        when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
         when(modelMapper.map(inventory, InventoryDTO.class)).thenReturn(inventoryDTO);
 

@@ -101,30 +101,37 @@ class ApiContractTest {
                 """.formatted(itemId), created.body(), JSONCompareMode.LENIENT);
         String inventoryPath = "/api/v1/inventory/" + new JSONObject(created.body()).getLong("id");
 
-        // State is checked with a follow-up GET because adjust and reserve return a stale availableQuantity
-        assertEquals(200, call("PATCH", inventoryPath + "/adjust?adjustment=-15&reason=contract", null).statusCode());
-        assertQuantities(inventoryPath, 25, 0, 25);
+        // Phase A: adjust and reserve now return the up-to-date availableQuantity, so their responses are checked too
+        HttpResponse<String> adjusted = call("PATCH", inventoryPath + "/adjust?adjustment=-15&reason=contract", null);
+        assertEquals(200, adjusted.statusCode());
+        assertQuantities(adjusted.body(), 25, 0, 25);
+        assertQuantities(call("GET", inventoryPath, null).body(), 25, 0, 25);
 
-        assertEquals(200, call("PATCH", inventoryPath + "/reserve?quantity=5", null).statusCode());
-        assertQuantities(inventoryPath, 25, 5, 20);
+        HttpResponse<String> reserved = call("PATCH", inventoryPath + "/reserve?quantity=5", null);
+        assertEquals(200, reserved.statusCode());
+        assertQuantities(reserved.body(), 25, 5, 20);
+        assertQuantities(call("GET", inventoryPath, null).body(), 25, 5, 20);
 
+        // Phase A: over-reserving is a 409 InsufficientStockException (was 400 IllegalArgumentException)
         HttpResponse<String> overReserved = call("PATCH", inventoryPath + "/reserve?quantity=500", null);
-        assertEquals(400, overReserved.statusCode());
+        assertEquals(409, overReserved.statusCode());
+        assertEquals("Insufficient Stock", new JSONObject(overReserved.body()).getString("error"));
         assertEquals("Insufficient available stock", new JSONObject(overReserved.body()).getString("message"));
 
         assertEquals("25", call("GET", "/api/v1/inventory/warehouse/3/total", null).body());
+
+        // Phase A: inventory.item_id is ON DELETE RESTRICT, so an item with stock cannot be deleted
+        assertEquals(409, call("DELETE", "/api/v1/items/" + itemId, null).statusCode());
 
         assertEquals(204, call("DELETE", inventoryPath, null).statusCode());
         assertEquals(204, call("DELETE", "/api/v1/items/" + itemId, null).statusCode());
         assertEquals(404, call("GET", inventoryPath, null).statusCode());
     }
 
-    private void assertQuantities(String inventoryPath, int quantity, int reserved, int available) throws Exception {
-        HttpResponse<String> response = call("GET", inventoryPath, null);
-        assertEquals(200, response.statusCode());
+    private static void assertQuantities(String inventoryJson, int quantity, int reserved, int available) throws Exception {
         JSONAssert.assertEquals("""
                 {"quantity": %d, "reservedQuantity": %d, "availableQuantity": %d}
-                """.formatted(quantity, reserved, available), response.body(), JSONCompareMode.LENIENT);
+                """.formatted(quantity, reserved, available), inventoryJson, JSONCompareMode.LENIENT);
     }
 
     private HttpResponse<String> call(String method, String path, String jsonBody) throws Exception {
