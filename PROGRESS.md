@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phase A of `WMS_IMPLEMENTATION_PLAN.md` (inventory integrity, V7) is implemented and committed on branch `feat/phase-a-inventory-integrity`, cut from `main` at `997bafb`. It is not pushed. Next: the user reviews the branch, then decides whether to push and open a PR. Do not start Phase B until Phase A is merged and the user says so. `WMS_IMPLEMENTATION_PLAN.md` is deliberately left untracked (user decision), so it exists only in this checkout.
+Phase A of `WMS_IMPLEMENTATION_PLAN.md` (inventory integrity, V7) is implemented and committed on branch `feat/phase-a-inventory-integrity`, cut from `main` at `997bafb`. It is not pushed or merged. At the user's request, Phase B (locations and LPNs, V8 and V9) is stacked on it in branch `feat/phase-b-locations`, cut from `0a92291`. When Phase A merges, rebase or merge Phase B onto `main` before its PR. Phase B is implemented and committed there, not pushed. Next: the user reviews both branches and decides on pushing and PRs (Phase A first). Do not start Phase C until the user says so. `WMS_IMPLEMENTATION_PLAN.md` is deliberately left untracked (user decision), so it exists only in this checkout.
 
 Earlier: The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
@@ -49,6 +49,8 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 | Merge `feature/demand-forecasting-pipeline` into `main` (PR #3) | DONE |
 | Phase A: inventory integrity and concurrency (V7) | DONE (committed, not pushed) |
 | Phase A: push and open PR | TODO (waiting for the user) |
+| Phase B: locations and LPNs (V8, V9), stacked on Phase A | DONE (committed, not pushed) |
+| Phase B: rebase onto `main` after Phase A merges, push and open PR | TODO (waiting for the user) |
 
 ## 5. Environment notes
 
@@ -71,6 +73,11 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 - The `DataIntegrityViolationException` handler is global, so other constraint violations that used to return 500 (for example a duplicate shipment `trackingNumber`, or a second inventory row for the same item, warehouse and zone) now return 409 too.
 - `DELETE /api/v1/inventory/{id}` still deletes a row that has reserved stock.
 - No lock timeout is set, so a request waits as long as another transaction holds the inventory or shipment row lock.
+- Inventory is still unique on (item, warehouse, zone), so one item cannot sit in two bins of the same zone. Deferred to Phase C, when put-away starts writing `inventory.location_id` (user decision, 2026-10-30).
+- `inventory.location_id` and `inventory.lpn_id` exist in the schema but are not mapped in `Inventory` or exposed in `InventoryDTO` yet, so the `inventory.json` baseline is unchanged. LPNs have no entity or endpoints (Phase B scope was schema only).
+- `DELETE /api/v1/zones/{id}` now returns 409 for any zone that has locations, which includes every seeded zone (consequence of RESTRICT on `locations.zone_id`).
+- An invalid enum in a query or path parameter (for example `GET /api/v1/locations?type=SHELF`, or the existing `/api/v1/zones/type/{type}`) falls through to the catch-all handler and returns 500 instead of 400.
+- A duplicate location code returns the generic 409 message "The request conflicts with existing data." rather than naming the code.
 - On JDK 25, Lombok (`lombok.permit.Permit`, at compile time) and ModelMapper 3.2.4 (`TypeResolver`, at runtime) call deprecated `sun.misc.Unsafe` methods and print warnings. Neither breaks anything yet. ModelMapper 3.2.8 (Phase 2) removed its warning; the Lombok one (still present with 1.18.48) needs an upstream fix.
 - With Jackson 3, `/actuator/health` orders its keys differently (`components` before `status`). Our own endpoints' JSON is byte-identical apart from timestamps. Nothing known depends on key order; the compose healthcheck uses `pg_isready`.
 - The old dev database password (and pgAdmin `admin`/`admin`) remain in public git history. The user decided against rewriting history; rotating the password makes the old value useless. Until rotated, the running stack still uses the old value from the local `.env`.
@@ -83,6 +90,7 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 | 1 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase1 .` | BUILD SUCCESS, no Lombok errors, no Mockito dynamic agent warning, image builds |
 | 2 | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase2 .` | BUILD SUCCESS with no edits to the contract or migration tests beyond Testcontainers 2.x imports; no properties-migrator or `HHH90000025` warnings in the log |
 | A | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase-a .` | BUILD SUCCESS, 24 tests green including `InventoryConcurrencyTest`; image builds |
+| B | `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 sh mvnw -B clean verify`, then `docker build -t wms:phase-b .` | BUILD SUCCESS, 34 tests green; image builds and `/actuator/flyway` lists V1 to V9 as SUCCESS |
 
 ## 8. Session log
 
@@ -141,3 +149,11 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 - Deliberate test changes: `ApiContractTest` over-reserve 400 to 409 (error "Insufficient Stock", same message); the adjust and reserve responses are now asserted directly, not only through a follow-up GET; deleting an item that has stock returns 409. `FlywayMigrationTest` expects V7 and checks that the CHECK rejects an oversell and that the unique constraint rejects a second null-zone row. `InventoryServiceTest` stubs `findByIdForUpdate` instead of `findById`. List baselines are unchanged, and the new tests create and delete their own rows so the STRICT baselines stay valid.
 - New `ShipmentWorkflowTest`: double `/process` reserves once and the second call returns 409; an illegal transition returns 409; `PATCH status=PROCESSING` returns 409 and reserves nothing; the legal path PENDING, PROCESSING, SHIPPED, DELIVERED works.
 - Verification: `clean verify` passes with 24 tests in one shared Spring context; `InventoryConcurrencyTest` passed on two more isolated runs. `docker build -t wms:phase-a .` succeeds. A smoke run of the image with the `prod` profile against a throwaway `postgres:16-alpine` reached health UP, returned fresh quantities from `/reserve`, and returned 409 for an over-reserve and for deleting a stocked item (which proves V7's RESTRICT key is in place). The smoke containers and network were removed afterwards.
+- Phase B, at the user's request, before Phase A was merged. The user chose to stack it: `feat/phase-b-locations` was cut from `feat/phase-a-inventory-integrity` (`0a92291`). The optional CSV import for locations was skipped (user decision).
+- User decisions for Phase B: leave the inventory unique key alone until Phase C; `locations.zone_id` is `ON DELETE RESTRICT`; LPN status values are ACTIVE, CLOSED and SHIPPED with a CHECK.
+- `V8__create_locations.sql`: `locations` table as specified (nullable `zone_id`, type CHECK, `UNIQUE (warehouse_id, code)`, partial index on (zone_id, type) WHERE is_active, updated_at trigger reusing V6's function), seeded with three bins per seeded zone (RESERVE in the bulk zone Z-C1, PICK_FACE elsewhere, pick_sequence 10/20/30) plus RCV-01 and PACK-01 in WH-001 with no zone, and nullable `inventory.location_id` (RESTRICT, indexed). Seeds select zones and the warehouse by code and use `ON CONFLICT DO NOTHING`, so a dev database with extra or missing seed rows still migrates.
+- `V9__create_lpns.sql`: `lpns` table (type and status CHECKs, `UNIQUE (warehouse_id, code)`, RESTRICT on location and parent LPN, warehouse CASCADE) and nullable `inventory.lpn_id` (RESTRICT, indexed).
+- Checked before relying on it: with RESTRICT keys, deleting a warehouse still cascades through zones, locations, nested LPNs and inventory. A probe on a throwaway Postgres 16 showed both RESTRICT and NO ACTION allow the cascade and both block a direct zone delete; `FlywayMigrationTest` now covers this on the real schema.
+- Location API in the Zone layering: `GET /api/v1/locations?zoneId=&type=` (both optional, ordered by id), `GET/PUT/DELETE /api/v1/locations/{id}`, `POST /api/v1/locations`. A zone from another warehouse or a PUT that changes the warehouse returns 400; a duplicate code in one warehouse returns 409 through the Phase A constraint handler; `isActive` defaults to true and `isMixedSkuAllowed` to false. No caching, unlike `ZoneService`.
+- Tests: `FlywayMigrationTest` expects V8 and V9 (deliberate) and checks the seeds, the type and status CHECKs, the zone RESTRICT and the warehouse cascade. New `LocationApiTest` covers the filters, a create/get/update/delete round trip, per-warehouse code uniqueness, the zone/warehouse checks and validation errors; it deletes its own `TST-` rows. `ApiContractTest` is unchanged.
+- Verification: `clean verify` passes with 34 tests in one shared Spring context. `docker build -t wms:phase-b .` succeeds. A `prod` profile smoke run against a throwaway Postgres reached health UP, `/actuator/flyway` listed V1 to V9 as SUCCESS, `GET /api/v1/locations?type=RECEIVING` returned RCV-01, and deleting a seeded zone returned 409. The smoke containers were removed.
