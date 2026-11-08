@@ -28,7 +28,7 @@ class FlywayMigrationTest {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class);
 
-        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), versions);
+        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"), versions);
     }
 
     @Test
@@ -155,5 +155,26 @@ class FlywayMigrationTest {
                         + "WHERE l.warehouse_id = w.id AND l.type = 'RECEIVING')", Integer.class);
 
         assertEquals(0, warehousesWithout);
+    }
+
+    @Test
+    @Transactional
+    void orderLinesCannotOverAllocateAndAllocationsMustBePositive() {
+        Long orderId = jdbcTemplate.queryForObject(
+                "INSERT INTO outbound_orders (warehouse_id, external_ref) VALUES (1, 'MIGRATION-TEST') RETURNING id", Long.class);
+        Long lineId = jdbcTemplate.queryForObject(
+                "INSERT INTO outbound_lines (order_id, line_no, item_id, qty_ordered) VALUES (?, 1, 1, 2) RETURNING id",
+                Long.class, orderId);
+
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "UPDATE outbound_lines SET qty_allocated = 3 WHERE id = ?", lineId));
+    }
+
+    @Test
+    void allocationQuantityAndStatusAreChecked() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO outbound_orders (warehouse_id, external_ref, status) VALUES (1, 'BAD-STATUS', 'LOST')"));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO allocations (line_id, inventory_id, qty) VALUES (1, 1, 0)"));
     }
 }

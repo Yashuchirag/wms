@@ -9,6 +9,7 @@ A comprehensive warehouse management system built with Spring Boot 4 and Java 25
 - 🗄️ Storage locations (bins) per zone, with receiving and packing locations
 - 🔒 Concurrency-safe stock reservations that cannot oversell
 - 📒 Inventory ledger: every stock change is recorded and can be reconciled against balances
+- 🧾 Outbound orders from an order management system, with idempotent intake and stock allocation
 - 📊 Item catalog management with turnover rates
 - 🚚 Shipment tracking (inbound/outbound) with enforced status transitions
 - 🔄 Automated inventory reconciliation
@@ -117,6 +118,24 @@ http://localhost:8080/swagger-ui.html
 - `POST /api/v1/shipments/{id}/process` - Process shipment
 - `PATCH /api/v1/shipments/{id}/status` - Update shipment status
 
+#### Order Management
+- `POST /api/v1/orders`: Receive an order (201). Sending the same `externalOrderId` for the same warehouse again returns the existing order with 200, even when two copies arrive at the same time
+- `GET /api/v1/orders?status=`: List orders, optionally filtered by status
+- `GET /api/v1/orders/{id}`: Get an order with its lines and allocations
+- `POST /api/v1/orders/{id}/allocate`: Reserve stock for whatever each line still needs
+- `POST /api/v1/orders/{id}/cancel`: Cancel an order before picking starts and release its allocations
+
+An order identifies its warehouse by code and its items by SKU:
+
+```json
+{"externalOrderId": "OMS-1001", "warehouseCode": "WH-001", "shipBy": "2026-11-20T17:00:00Z",
+ "carrier": "UPS", "serviceLevel": "GROUND", "priority": 5,
+ "shipTo": {"name": "Jane Smith", "address": {"line1": "1 Main St", "city": "New York", "zip": "10001"}},
+ "lines": [{"lineNo": 1, "sku": "SKU-001", "qty": 2}]}
+```
+
+An unknown warehouse code or SKU, or a repeated line number, returns 400. `priority` is a number; higher is more urgent and the default is 0.
+
 #### Location Management
 - `GET /api/v1/locations?zoneId=&type=`: List locations, optionally filtered by zone and type (both filters are optional)
 - `POST /api/v1/locations`: Create a location
@@ -132,7 +151,7 @@ Location types are `RECEIVING`, `PICK_FACE`, `RESERVE`, `STAGING`, `PACK` and `D
 |---|---|
 | 400 | Request validation fails (field errors are listed under `errors`), or a request is invalid, such as a zone from another warehouse |
 | 404 | The requested record does not exist |
-| 409 | Not enough available stock to reserve or adjust, an illegal shipment status change, receiving into a warehouse that has no receiving location, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
+| 409 | Not enough available stock to reserve or adjust, an illegal shipment or order status change, receiving into a warehouse that has no receiving location, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
 
 ## Database Schema
 
@@ -147,6 +166,8 @@ The system uses PostgreSQL with Flyway migrations. Key tables:
 - **lpns**: License plates (pallets, cases, totes, cartons) that can sit in a location and nest inside each other
 - **inventory_txn**: The append-only inventory ledger, partitioned by month. Each row records one stock movement (receipt, move, allocate, deallocate, pick, ship or adjustment) with its quantity, locations and the reference that caused it
 - **processed_requests**: Idempotency keys that have already been handled
+- **outbound_orders** and **outbound_lines**: Orders received from the order management system, one row per line with ordered, allocated, picked and shipped quantities
+- **allocations**: Which inventory row each order line's stock is reserved on, and whether that reservation is open, picked or cancelled
 
 Integrity rules enforced by the database:
 
@@ -156,7 +177,7 @@ Integrity rules enforced by the database:
 - Ledger quantities are always positive; the transaction type gives the direction. The ledger has no foreign keys, so its history outlives the items and locations it mentions.
 - `inventory.location_id` is set for stock that the ledger places in a location, such as received stock. Neither it nor `inventory.lpn_id` is exposed through the API yet.
 
-Migrations live in `src/main/resources/db/migration` (V1 to V10). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
+Migrations live in `src/main/resources/db/migration` (V1 to V12). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
 
 ## Configuration
 
@@ -264,6 +285,13 @@ src/
 - Moving an outbound shipment to SHIPPED removes the reserved stock from the warehouse, and cancelling a PROCESSING outbound shipment releases its reservation.
 - Moving an inbound shipment to RECEIVED adds its quantity at the warehouse's receiving location (`RCV-01`).
 
+### Outbound Orders
+- Order states: Created → Allocated → Released → Picking → Picked → Packed → Shipped, plus Short and Cancelled. One state machine rejects every other move with 409. This release uses allocation and cancellation; the later states are for the task engine.
+- Allocation takes stock from pick faces first, then reserve bins (by pick sequence), then stock that has no location. It never takes stock from receiving, staging, packing or dock locations, or from inactive bins.
+- Each allocation locks one inventory row at a time with `FOR UPDATE SKIP LOCKED`, so concurrent allocations never over-allocate and never wait on each other. The cost is that an allocation can pass over stock another allocation is holding at that moment and come out Short.
+- A Short order keeps what it got and can be allocated again to fill the rest. It becomes Allocated once every line is covered.
+- Every allocation writes an ALLOCATE ledger entry, and cancelling writes the matching DEALLOCATE entries, so the ledger still reconciles.
+
 ### Operational Insights
 - Total inventory per warehouse
 - Low stock item reports
@@ -279,7 +307,7 @@ The system is being extended one phase at a time, each in its own pull request:
 | A | Inventory integrity and concurrency | Done |
 | B | Storage locations and LPNs | Done |
 | C | Inventory ledger and idempotent stock changes | Done |
-| D | Outbound orders and allocation | Planned |
+| D | Outbound orders and allocation | Done |
 | E | Task engine (put-away, pick, replenish, count) | Planned |
 | F | Transactional outbox for events | Planned |
 
