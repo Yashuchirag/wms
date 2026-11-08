@@ -182,6 +182,7 @@ The system uses PostgreSQL with Flyway migrations. Key tables:
 - **processed_requests**: Idempotency keys that have already been handled
 - **outbound_orders** and **outbound_lines**: Orders received from the order management system, one row per line with ordered, allocated, picked and shipped quantities
 - **allocations**: Which inventory row each order line's stock is reserved on, and whether that reservation is open, picked or cancelled
+- **outbox_events**: Events waiting to be published (or recently published), written in the same transaction as the change they describe
 - **tasks**: Work for the floor (pick, count, and later put-away, replenishment and moves), with its status, priority, locations, the order it belongs to and who claimed it
 
 Integrity rules enforced by the database:
@@ -192,7 +193,7 @@ Integrity rules enforced by the database:
 - Ledger quantities are always positive; the transaction type gives the direction. The ledger has no foreign keys, so its history outlives the items and locations it mentions.
 - `inventory.location_id` is set for stock that the ledger places in a location, such as received stock. Neither it nor `inventory.lpn_id` is exposed through the API yet.
 
-Migrations live in `src/main/resources/db/migration` (V1 to V13). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
+Migrations live in `src/main/resources/db/migration` (V1 to V14). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
 
 ## Configuration
 
@@ -209,6 +210,14 @@ DB_USERNAME=your_username
 DB_PASSWORD=your_password
 SPRING_PROFILES_ACTIVE=prod
 ```
+
+### Event Relay
+
+| Property | Default | Meaning |
+|---|---|---|
+| `wms.outbox.relay.enabled` | `true` | Run the outbox relay and cleanup on a schedule (the `itest` profile turns this off) |
+| `wms.outbox.relay.poll-interval` | `1000` | Milliseconds between relay runs |
+| `wms.outbox.cleanup.cron` | `0 0 3 * * *` | When to delete events published more than 7 days ago |
 
 ## Monitoring
 
@@ -314,6 +323,13 @@ src/
 - A short pick (fewer units than the task asks for) picks what was found, writes the missing units off with an ADJUST_OUT entry (reason `SHORT_PICK`), marks the task Short, creates a count task for the bin, and allocates the remainder again with new pick tasks. If no stock is left, the order still finishes picking and the line's picked quantity shows the gap.
 - Count tasks are created but not handed out by `/tasks/next` yet, because nothing can confirm them.
 
+### Events
+- Order changes are announced as events through a transactional outbox: `OrderAccepted.v1` when a new order arrives (not for a duplicate), and `OrderAllocated.v1` or `OrderShort.v1` after each allocation. `OrderShipped.v1` is defined for when orders can ship.
+- An event is written in the same database transaction as the change, so it exists exactly when the change commits.
+- A relay publishes unsent events in order every second, in batches of 100, using `FOR UPDATE SKIP LOCKED`. Delivery is at least once, so each payload carries an `eventId` for consumers to drop duplicates, plus `occurredAt`, the order's id, external id, warehouse, status and lines.
+- A failed publish keeps the event, counts the attempt, records the error and retries on the next run. Later events of the same order wait behind it, so each order's events arrive in order.
+- For now events are written to the application log. Events published more than 7 days ago are deleted daily.
+
 ### Operational Insights
 - Total inventory per warehouse
 - Low stock item reports
@@ -331,7 +347,7 @@ The system is being extended one phase at a time, each in its own pull request:
 | C | Inventory ledger and idempotent stock changes | Done |
 | D | Outbound orders and allocation | Done |
 | E | Task engine (release, pick, short picks and count tasks) | Done |
-| F | Transactional outbox for events | Planned |
+| F | Transactional outbox for events | Done |
 
 ## Contributing
 

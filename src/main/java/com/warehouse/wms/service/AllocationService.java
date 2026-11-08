@@ -48,6 +48,7 @@ public class AllocationService {
     private final InventoryRepository inventoryRepository;
     private final InventoryLedgerService inventoryLedgerService;
     private final JdbcTemplate jdbcTemplate;
+    private final OrderEvents orderEvents;
 
     /**
      * Allocates what each line still needs. The order becomes ALLOCATED when every line is covered and SHORT
@@ -72,6 +73,7 @@ public class AllocationService {
         }
 
         order.setStatus(complete ? OrderStatus.ALLOCATED : OrderStatus.SHORT);
+        orderEvents.write(order, complete ? OrderEvents.ALLOCATED : OrderEvents.SHORT);
         log.info("Order {} is {}", orderId, order.getStatus());
         return order;
     }

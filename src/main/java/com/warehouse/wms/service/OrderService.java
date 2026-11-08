@@ -49,6 +49,7 @@ public class OrderService {
     private final ItemRepository itemRepository;
     private final AllocationService allocationService;
     private final TaskService taskService;
+    private final OrderEvents orderEvents;
     private final JdbcTemplate jdbcTemplate;
     private final JsonMapper jsonMapper;
 
@@ -89,6 +90,7 @@ public class OrderService {
             order.getLines().add(line);
         }
         orderRepository.flush();
+        orderEvents.write(order, OrderEvents.ACCEPTED);
 
         log.info("Order {} created with id: {}", request.getExternalOrderId(), order.getId());
         return new OrderIntake(convertToDTO(order), true);
