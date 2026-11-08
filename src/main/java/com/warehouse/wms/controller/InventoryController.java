@@ -1,6 +1,7 @@
 package com.warehouse.wms.controller;
 
 import com.warehouse.wms.dto.InventoryDTO;
+import com.warehouse.wms.dto.ReconciliationMismatchDTO;
 import com.warehouse.wms.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,6 +57,12 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getTotalInventoryByWarehouse(warehouseId));
     }
 
+    @GetMapping("/reconciliation")
+    @Operation(summary = "Reconcile ledger", description = "List warehouse, item and location groups whose ledger totals differ from their inventory; empty means balanced")
+    public ResponseEntity<List<ReconciliationMismatchDTO>> getReconciliationMismatches() {
+        return ResponseEntity.ok(inventoryService.getReconciliationMismatches());
+    }
+
     @PostMapping
     @Operation(summary = "Create inventory", description = "Create a new inventory record")
     public ResponseEntity<InventoryDTO> createInventory(@Valid @RequestBody InventoryDTO inventoryDTO) {
@@ -75,16 +82,18 @@ public class InventoryController {
     public ResponseEntity<InventoryDTO> adjustStock(
             @PathVariable Long id,
             @RequestParam Integer adjustment,
-            @RequestParam(required = false) String reason) {
-        return ResponseEntity.ok(inventoryService.adjustStock(id, adjustment, reason));
+            @RequestParam(required = false) String reason,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return ResponseEntity.ok(inventoryService.adjustStock(id, adjustment, reason, idempotencyKey));
     }
 
     @PatchMapping("/{id}/reserve")
     @Operation(summary = "Reserve stock", description = "Reserve inventory for shipment")
     public ResponseEntity<InventoryDTO> reserveStock(
             @PathVariable Long id,
-            @RequestParam Integer quantity) {
-        return ResponseEntity.ok(inventoryService.reserveStock(id, quantity));
+            @RequestParam Integer quantity,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return ResponseEntity.ok(inventoryService.reserveStock(id, quantity, idempotencyKey));
     }
 
     @DeleteMapping("/{id}")

@@ -8,6 +8,7 @@ A comprehensive warehouse management system built with Spring Boot 4 and Java 25
 - 🏢 Warehouse and zone management
 - 🗄️ Storage locations (bins) per zone, with receiving and packing locations
 - 🔒 Concurrency-safe stock reservations that cannot oversell
+- 📒 Inventory ledger: every stock change is recorded and can be reconciled against balances
 - 📊 Item catalog management with turnover rates
 - 🚚 Shipment tracking (inbound/outbound) with enforced status transitions
 - 🔄 Automated inventory reconciliation
@@ -99,6 +100,9 @@ http://localhost:8080/swagger-ui.html
 - `PATCH /api/v1/inventory/{id}/adjust` - Adjust stock levels
 - `PATCH /api/v1/inventory/{id}/reserve` - Reserve stock
 - `GET /api/v1/inventory/low-stock` - Get low stock items
+- `GET /api/v1/inventory/reconciliation`: List warehouse, item and location groups whose ledger totals differ from their inventory (an empty list means everything balances)
+
+`adjust` and `reserve` accept an optional `Idempotency-Key` header. A repeated key changes nothing and returns 200 with the current state of the record. A request that fails does not use up its key.
 
 #### Item Management
 - `GET /api/v1/items` - List all items
@@ -128,7 +132,7 @@ Location types are `RECEIVING`, `PICK_FACE`, `RESERVE`, `STAGING`, `PACK` and `D
 |---|---|
 | 400 | Request validation fails (field errors are listed under `errors`), or a request is invalid, such as a zone from another warehouse |
 | 404 | The requested record does not exist |
-| 409 | Not enough available stock to reserve or adjust, an illegal shipment status change, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
+| 409 | Not enough available stock to reserve or adjust, an illegal shipment status change, receiving into a warehouse that has no receiving location, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
 
 ## Database Schema
 
@@ -141,15 +145,18 @@ The system uses PostgreSQL with Flyway migrations. Key tables:
 - **shipments**: Inbound and outbound shipments
 - **locations**: Bins within a warehouse, optionally inside a zone, with a type, pick sequence and capacity limits
 - **lpns**: License plates (pallets, cases, totes, cartons) that can sit in a location and nest inside each other
+- **inventory_txn**: The append-only inventory ledger, partitioned by month. Each row records one stock movement (receipt, move, allocate, deallocate, pick, ship or adjustment) with its quantity, locations and the reference that caused it
+- **processed_requests**: Idempotency keys that have already been handled
 
 Integrity rules enforced by the database:
 
 - `reserved_quantity` can never exceed `quantity` on an inventory row.
-- An item appears at most once per warehouse and zone, and a row without a zone counts as one value (`UNIQUE NULLS NOT DISTINCT`).
+- An item appears at most once per warehouse, zone and location, and missing values count as one value (`UNIQUE NULLS NOT DISTINCT`).
 - An item that still has inventory cannot be deleted, and neither can a zone that still has locations or a location that still holds inventory or LPNs.
-- `inventory.location_id` and `inventory.lpn_id` exist for upcoming ledger and put-away work but are not exposed through the API yet.
+- Ledger quantities are always positive; the transaction type gives the direction. The ledger has no foreign keys, so its history outlives the items and locations it mentions.
+- `inventory.location_id` is set for stock that the ledger places in a location, such as received stock. Neither it nor `inventory.lpn_id` is exposed through the API yet.
 
-Migrations live in `src/main/resources/db/migration` (V1 to V9). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
+Migrations live in `src/main/resources/db/migration` (V1 to V10). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
 
 ## Configuration
 
@@ -234,6 +241,8 @@ src/
 - Reserved quantity tracking
 - Low stock alerts
 - Reserve and adjust lock the inventory row (`SELECT ... FOR UPDATE`), so concurrent requests cannot lose updates or oversell. Other writes are protected by an optimistic `@Version` check.
+- Every quantity change goes through one ledger service, which updates the balance and writes one ledger row in the same transaction. That includes creating, editing and deleting inventory records, which write `INITIAL`, `MANUAL_UPDATE` and `RECORD_DELETED` adjustments.
+- Existing stock was given opening-balance ledger rows, so the ledger reconciles from the start.
 
 ### Storage Locations
 - Three seeded bins per seeded zone (reserve bins in the bulk zone, pick faces elsewhere)
@@ -249,10 +258,11 @@ src/
 ### Shipment Management
 - Inbound/outbound shipments
 - Tracking number generation
-- Status tracking (Pending → Processing → Shipped → Delivered, and Pending or Processing → Cancelled)
+- Status tracking: outbound Pending → Processing → Shipped → Delivered; inbound Pending → Processing → Received; either type can go from Pending or Processing to Cancelled
 - Processing an outbound shipment reserves its stock. Only `POST /api/v1/shipments/{id}/process` moves a shipment from PENDING to PROCESSING, so the reservation cannot be skipped, and processing the same shipment twice returns 409.
 - Any other illegal status change returns 409.
-- Shipping does not yet decrement stock, and cancelling does not yet release a reservation. Both arrive with the inventory ledger.
+- Moving an outbound shipment to SHIPPED removes the reserved stock from the warehouse, and cancelling a PROCESSING outbound shipment releases its reservation.
+- Moving an inbound shipment to RECEIVED adds its quantity at the warehouse's receiving location (`RCV-01`).
 
 ### Operational Insights
 - Total inventory per warehouse
@@ -268,7 +278,7 @@ The system is being extended one phase at a time, each in its own pull request:
 |---|---|---|
 | A | Inventory integrity and concurrency | Done |
 | B | Storage locations and LPNs | Done |
-| C | Inventory ledger and idempotent stock changes | Planned |
+| C | Inventory ledger and idempotent stock changes | Done |
 | D | Outbound orders and allocation | Planned |
 | E | Task engine (put-away, pick, replenish, count) | Planned |
 | F | Transactional outbox for events | Planned |

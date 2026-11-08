@@ -9,6 +9,7 @@ import com.warehouse.wms.repository.InventoryRepository;
 import com.warehouse.wms.repository.ItemRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
 import com.warehouse.wms.repository.ZoneRepository;
+import com.warehouse.wms.service.InventoryLedgerService.LedgerRef;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +45,9 @@ class InventoryServiceTest {
 
     @Mock
     private ModelMapper modelMapper;
+
+    @Mock
+    private InventoryLedgerService inventoryLedgerService;
 
     @InjectMocks
     private InventoryService inventoryService;
@@ -123,29 +129,32 @@ class InventoryServiceTest {
 
         assertNotNull(result);
         verify(inventoryRepository, times(1)).save(any(Inventory.class));
+        // The opening quantity goes through the ledger, not straight onto the row
+        verify(inventoryLedgerService).adjust(1L, 100, "INITIAL", LedgerRef.NONE);
+        verify(inventoryLedgerService, never()).allocate(anyLong(), anyInt(), any());
     }
 
     @Test
     void testAdjustStock_Success() {
-        when(inventoryRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(inventory));
-        when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
+        LedgerRef ref = new LedgerRef(null, null, null);
+        when(inventoryLedgerService.adjust(1L, 50, "Restock", ref)).thenReturn(inventory);
         when(modelMapper.map(inventory, InventoryDTO.class)).thenReturn(inventoryDTO);
 
-        InventoryDTO result = inventoryService.adjustStock(1L, 50, "Restock");
+        InventoryDTO result = inventoryService.adjustStock(1L, 50, "Restock", null);
 
         assertNotNull(result);
-        verify(inventoryRepository, times(1)).save(any(Inventory.class));
+        verify(inventoryLedgerService, times(1)).adjust(1L, 50, "Restock", ref);
     }
 
     @Test
     void testReserveStock_Success() {
-        when(inventoryRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(inventory));
-        when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
+        LedgerRef ref = new LedgerRef(null, null, null);
+        when(inventoryLedgerService.allocate(1L, 20, ref)).thenReturn(inventory);
         when(modelMapper.map(inventory, InventoryDTO.class)).thenReturn(inventoryDTO);
 
-        InventoryDTO result = inventoryService.reserveStock(1L, 20);
+        InventoryDTO result = inventoryService.reserveStock(1L, 20, null);
 
         assertNotNull(result);
-        verify(inventoryRepository, times(1)).save(any(Inventory.class));
+        verify(inventoryLedgerService, times(1)).allocate(1L, 20, ref);
     }
 }

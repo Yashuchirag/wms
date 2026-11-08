@@ -56,6 +56,7 @@ class InventoryConcurrencyTest {
 
     @AfterEach
     void deleteRow() {
+        jdbcTemplate.update("DELETE FROM inventory_txn WHERE item_id = ?", itemId);
         jdbcTemplate.update("DELETE FROM inventory WHERE id = ?", inventoryId);
         jdbcTemplate.update("DELETE FROM items WHERE id = ?", itemId);
     }
@@ -89,6 +90,9 @@ class InventoryConcurrencyTest {
         assertEquals(succeeded, reserved.longValue(), "reserved_quantity must equal the successful reservations");
         assertTrue(reserved <= STOCK, "reserved_quantity must never exceed quantity");
         assertEquals(STOCK, succeeded, "every unit should be reservable exactly once");
+        assertEquals(succeeded, (long) jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM inventory_txn WHERE item_id = ? AND txn_type = 'ALLOCATE'", Long.class, itemId),
+                "every successful reservation writes exactly one ledger row");
         assertTrue(statuses.stream().allMatch(status -> status == 200 || status == 409),
                 "rejections must be 409, got " + statuses);
     }

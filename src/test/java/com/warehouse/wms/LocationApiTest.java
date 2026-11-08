@@ -46,8 +46,9 @@ class LocationApiTest {
         assertEquals(List.of("Z-A1-01", "Z-A1-02", "Z-A1-03"), codes("/api/v1/locations?zoneId=1"));
         assertEquals(List.of("Z-C1-01", "Z-C1-02", "Z-C1-03"), codes("/api/v1/locations?zoneId=3&type=RESERVE"));
         assertEquals(List.of(), codes("/api/v1/locations?zoneId=1&type=RESERVE"));
-        assertEquals(List.of("RCV-01"), codes("/api/v1/locations?type=RECEIVING"));
-        assertEquals(17, new JSONArray(call("GET", "/api/v1/locations", null).body()).length());
+        // V10 added RCV-01 to WH-002 and WH-003
+        assertEquals(List.of("RCV-01", "RCV-01", "RCV-01"), codes("/api/v1/locations?type=RECEIVING"));
+        assertEquals(19, new JSONArray(call("GET", "/api/v1/locations", null).body()).length());
     }
 
     @Test

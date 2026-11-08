@@ -63,6 +63,6 @@ public class Shipment {
     }
 
     public enum ShipmentStatus {
-        PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+        PENDING, PROCESSING, RECEIVED, SHIPPED, DELIVERED, CANCELLED
     }
 }
