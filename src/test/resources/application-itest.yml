@@ -1,0 +1,5 @@
+# Tests call OutboxRelay themselves; a background poller would race them
+wms:
+  outbox:
+    relay:
+      enabled: false
