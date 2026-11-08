@@ -123,7 +123,8 @@ http://localhost:8080/swagger-ui.html
 - `GET /api/v1/orders?status=`: List orders, optionally filtered by status
 - `GET /api/v1/orders/{id}`: Get an order with its lines and allocations
 - `POST /api/v1/orders/{id}/allocate`: Reserve stock for whatever each line still needs
-- `POST /api/v1/orders/{id}/cancel`: Cancel an order before picking starts and release its allocations
+- `POST /api/v1/orders/{id}/release`: Release an allocated order to the floor, creating one pick task per allocation
+- `POST /api/v1/orders/{id}/cancel`: Cancel an order before picking starts, release its allocations and cancel its open tasks
 
 An order identifies its warehouse by code and its items by SKU:
 
@@ -135,6 +136,19 @@ An order identifies its warehouse by code and its items by SKU:
 ```
 
 An unknown warehouse code or SKU, or a repeated line number, returns 400. `priority` is a number; higher is more urgent and the default is 0.
+
+#### Task Management
+- `POST /api/v1/tasks/next?zoneId=`: Claim the most urgent READY pick task, optionally in one zone (204 if there is none)
+- `GET /api/v1/tasks/{id}`: Get a task
+- `POST /api/v1/tasks/{id}/confirm`: Confirm a claimed pick with the scanned location and the quantity picked
+
+There is no authentication yet, so both POST endpoints need an `X-User-Id` header naming the picker, and only the user who claimed a task can confirm it. A confirmation looks like this:
+
+```json
+{"locationCode": "Z-A1-01", "qty": 5}
+```
+
+The scanned code must match the task's location. Stock that has no location has nothing to scan, so its tasks skip that check. A confirmation can carry an `Idempotency-Key` header; repeating it returns the task unchanged.
 
 #### Location Management
 - `GET /api/v1/locations?zoneId=&type=`: List locations, optionally filtered by zone and type (both filters are optional)
@@ -149,9 +163,9 @@ Location types are `RECEIVING`, `PICK_FACE`, `RESERVE`, `STAGING`, `PACK` and `D
 
 | Status | When |
 |---|---|
-| 400 | Request validation fails (field errors are listed under `errors`), or a request is invalid, such as a zone from another warehouse |
+| 400 | Request validation fails (field errors are listed under `errors`), or a request is invalid, such as a zone from another warehouse, a scanned location that does not match the task, or a missing `X-User-Id` header |
 | 404 | The requested record does not exist |
-| 409 | Not enough available stock to reserve or adjust, an illegal shipment or order status change, receiving into a warehouse that has no receiving location, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
+| 409 | Not enough available stock to reserve or adjust, an illegal shipment, order or task status change, receiving into a warehouse that has no receiving location, releasing in a warehouse that has no pack location, confirming a task someone else claimed, a record modified concurrently by another request, or a database constraint violation (a duplicate code, deleting an item that still has inventory, deleting a zone that still has locations) |
 
 ## Database Schema
 
@@ -168,6 +182,7 @@ The system uses PostgreSQL with Flyway migrations. Key tables:
 - **processed_requests**: Idempotency keys that have already been handled
 - **outbound_orders** and **outbound_lines**: Orders received from the order management system, one row per line with ordered, allocated, picked and shipped quantities
 - **allocations**: Which inventory row each order line's stock is reserved on, and whether that reservation is open, picked or cancelled
+- **tasks**: Work for the floor (pick, count, and later put-away, replenishment and moves), with its status, priority, locations, the order it belongs to and who claimed it
 
 Integrity rules enforced by the database:
 
@@ -177,7 +192,7 @@ Integrity rules enforced by the database:
 - Ledger quantities are always positive; the transaction type gives the direction. The ledger has no foreign keys, so its history outlives the items and locations it mentions.
 - `inventory.location_id` is set for stock that the ledger places in a location, such as received stock. Neither it nor `inventory.lpn_id` is exposed through the API yet.
 
-Migrations live in `src/main/resources/db/migration` (V1 to V12). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
+Migrations live in `src/main/resources/db/migration` (V1 to V13). Applied migrations are never edited; every schema change is a new `V<n>__*.sql` file.
 
 ## Configuration
 
@@ -286,11 +301,18 @@ src/
 - Moving an inbound shipment to RECEIVED adds its quantity at the warehouse's receiving location (`RCV-01`).
 
 ### Outbound Orders
-- Order states: Created → Allocated → Released → Picking → Picked → Packed → Shipped, plus Short and Cancelled. One state machine rejects every other move with 409. This release uses allocation and cancellation; the later states are for the task engine.
+- Order states: Created → Allocated → Released → Picking → Picked → Packed → Shipped, plus Short and Cancelled. One state machine rejects every other move with 409. Release and picking use Released, Picking and Picked; Packed and Shipped are not reached yet.
 - Allocation takes stock from pick faces first, then reserve bins (by pick sequence), then stock that has no location. It never takes stock from receiving, staging, packing or dock locations, or from inactive bins.
 - Each allocation locks one inventory row at a time with `FOR UPDATE SKIP LOCKED`, so concurrent allocations never over-allocate and never wait on each other. The cost is that an allocation can pass over stock another allocation is holding at that moment and come out Short.
 - A Short order keeps what it got and can be allocated again to fill the rest. It becomes Allocated once every line is covered.
 - Every allocation writes an ALLOCATE ledger entry, and cancelling writes the matching DEALLOCATE entries, so the ledger still reconciles.
+
+### Picking
+- Releasing an Allocated order creates one pick task per allocation. Each task takes its zone and pick sequence from the bin and its priority from the order, and its destination is the warehouse's pack location (`PACK-01`).
+- Pickers claim tasks with `FOR UPDATE SKIP LOCKED`, so concurrent pickers always get different tasks without waiting on each other. The most urgent task comes first, then the lowest pick sequence.
+- Confirming a pick moves the stock to the pack location with a PICK ledger entry; the reservation moves with it. The first confirmation moves the order to Picking, and the order becomes Picked once no pick task is left open.
+- A short pick (fewer units than the task asks for) picks what was found, writes the missing units off with an ADJUST_OUT entry (reason `SHORT_PICK`), marks the task Short, creates a count task for the bin, and allocates the remainder again with new pick tasks. If no stock is left, the order still finishes picking and the line's picked quantity shows the gap.
+- Count tasks are created but not handed out by `/tasks/next` yet, because nothing can confirm them.
 
 ### Operational Insights
 - Total inventory per warehouse
@@ -308,7 +330,7 @@ The system is being extended one phase at a time, each in its own pull request:
 | B | Storage locations and LPNs | Done |
 | C | Inventory ledger and idempotent stock changes | Done |
 | D | Outbound orders and allocation | Done |
-| E | Task engine (put-away, pick, replenish, count) | Planned |
+| E | Task engine (release, pick, short picks and count tasks) | Done |
 | F | Transactional outbox for events | Planned |
 
 ## Contributing
