@@ -4,13 +4,17 @@ import com.warehouse.wms.dto.ShipmentDTO;
 import com.warehouse.wms.exception.InvalidStatusTransitionException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.model.Item;
+import com.warehouse.wms.model.Location;
 import com.warehouse.wms.model.Shipment;
 import com.warehouse.wms.model.Shipment.ShipmentStatus;
+import com.warehouse.wms.model.Shipment.ShipmentType;
 import com.warehouse.wms.model.Warehouse;
 import com.warehouse.wms.repository.InventoryRepository;
 import com.warehouse.wms.repository.ItemRepository;
+import com.warehouse.wms.repository.LocationRepository;
 import com.warehouse.wms.repository.ShipmentRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
+import com.warehouse.wms.service.InventoryLedgerService.LedgerRef;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -30,19 +34,23 @@ import java.util.stream.Collectors;
 @Transactional
 public class ShipmentService {
 
-    // PENDING -> PROCESSING is only reachable through processShipment, which reserves stock
-    private static final Map<ShipmentStatus, Set<ShipmentStatus>> ALLOWED_STATUS_UPDATES = Map.of(
-            ShipmentStatus.PENDING, Set.of(ShipmentStatus.CANCELLED),
-            ShipmentStatus.PROCESSING, Set.of(ShipmentStatus.SHIPPED, ShipmentStatus.CANCELLED),
-            ShipmentStatus.SHIPPED, Set.of(ShipmentStatus.DELIVERED),
-            ShipmentStatus.DELIVERED, Set.of(),
-            ShipmentStatus.CANCELLED, Set.of());
+    // PENDING -> PROCESSING is only reachable through processShipment, which reserves stock for outbound shipments.
+    // Statuses missing from a map are final.
+    private static final Map<ShipmentType, Map<ShipmentStatus, Set<ShipmentStatus>>> ALLOWED_STATUS_UPDATES = Map.of(
+            ShipmentType.OUTBOUND, Map.of(
+                    ShipmentStatus.PENDING, Set.of(ShipmentStatus.CANCELLED),
+                    ShipmentStatus.PROCESSING, Set.of(ShipmentStatus.SHIPPED, ShipmentStatus.CANCELLED),
+                    ShipmentStatus.SHIPPED, Set.of(ShipmentStatus.DELIVERED)),
+            ShipmentType.INBOUND, Map.of(
+                    ShipmentStatus.PENDING, Set.of(ShipmentStatus.CANCELLED),
+                    ShipmentStatus.PROCESSING, Set.of(ShipmentStatus.RECEIVED, ShipmentStatus.CANCELLED)));
 
     private final ShipmentRepository shipmentRepository;
     private final WarehouseRepository warehouseRepository;
     private final ItemRepository itemRepository;
-    private final InventoryService inventoryService;
+    private final InventoryLedgerService inventoryLedgerService;
     private final InventoryRepository inventoryRepository;
+    private final LocationRepository locationRepository;
     private final ModelMapper modelMapper;
 
     public ShipmentDTO getShipmentById(Long id) {
@@ -109,10 +117,26 @@ public class ShipmentService {
         Shipment shipment = shipmentRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment not found"));
 
-        if (!ALLOWED_STATUS_UPDATES.get(shipment.getStatus()).contains(status)) {
+        if (!ALLOWED_STATUS_UPDATES.get(shipment.getType())
+                .getOrDefault(shipment.getStatus(), Set.of()).contains(status)) {
             throw new InvalidStatusTransitionException(status == ShipmentStatus.PROCESSING
                     ? "Use POST /api/v1/shipments/" + id + "/process to move a shipment to PROCESSING"
-                    : "Cannot change shipment status from " + shipment.getStatus() + " to " + status);
+                    : "Cannot change " + shipment.getType() + " shipment status from "
+                    + shipment.getStatus() + " to " + status);
+        }
+
+        LedgerRef ref = LedgerRef.of("SHIPMENT", shipment.getId());
+        if (status == ShipmentStatus.RECEIVED) {
+            Location receiving = locationRepository.findReceivingLocation(shipment.getWarehouse().getId())
+                    .orElseThrow(() -> new InvalidStatusTransitionException(
+                            "Warehouse " + shipment.getWarehouse().getCode() + " has no active RECEIVING location"));
+            inventoryLedgerService.receive(shipment.getWarehouse().getId(), shipment.getItem().getId(),
+                    receiving.getId(), shipment.getQuantity(), ref);
+        } else if (shipment.getType() == ShipmentType.OUTBOUND && status == ShipmentStatus.SHIPPED) {
+            inventoryLedgerService.ship(reservedInventoryId(shipment), shipment.getQuantity(), ref);
+        } else if (shipment.getType() == ShipmentType.OUTBOUND && shipment.getStatus() == ShipmentStatus.PROCESSING
+                && status == ShipmentStatus.CANCELLED) {
+            inventoryLedgerService.deallocate(reservedInventoryId(shipment), shipment.getQuantity(), ref);
         }
 
         shipment.setStatus(status);
@@ -139,13 +163,8 @@ public class ShipmentService {
 
         if (shipment.getType() == Shipment.ShipmentType.OUTBOUND) {
             // Reserve inventory for outbound shipment
-            Long inventoryId = inventoryRepository.findIdsByItemIdAndWarehouseId(
-                            shipment.getItem().getId(), shipment.getWarehouse().getId())
-                    .stream()
-                    .findFirst()
-                    .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
-
-            inventoryService.reserveStock(inventoryId, shipment.getQuantity());
+            inventoryLedgerService.allocate(reservedInventoryId(shipment), shipment.getQuantity(),
+                    LedgerRef.of("SHIPMENT", shipment.getId()));
         }
 
         shipment.setStatus(Shipment.ShipmentStatus.PROCESSING);
@@ -162,6 +181,16 @@ public class ShipmentService {
         }
         shipmentRepository.deleteById(id);
         log.info("Shipment deleted successfully");
+    }
+
+    // The row an outbound shipment reserves from: processing, shipping and cancelling must all pick the same one.
+    // Phase D's allocations record the row explicitly and replace this rule.
+    private Long reservedInventoryId(Shipment shipment) {
+        return inventoryRepository.findIdsByItemIdAndWarehouseId(
+                        shipment.getItem().getId(), shipment.getWarehouse().getId())
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
     }
 
     private String generateTrackingNumber() {

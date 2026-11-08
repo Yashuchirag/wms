@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "inventory", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"item_id", "warehouse_id", "zone_id"})
+        @UniqueConstraint(columnNames = {"item_id", "warehouse_id", "zone_id", "location_id"})
 })
 @Data
 @NoArgsConstructor
@@ -35,6 +35,10 @@ public class Inventory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "zone_id")
     private Zone zone;
+
+    // A plain column, not a relation: only the ledger reads it, and ModelMapper would otherwise see a second warehouse.id
+    @Column(name = "location_id")
+    private Long locationId;
 
     @Column(nullable = false)
     private Integer quantity;

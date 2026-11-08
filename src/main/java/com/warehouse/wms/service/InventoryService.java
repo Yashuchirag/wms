@@ -1,7 +1,7 @@
 package com.warehouse.wms.service;
 
 import com.warehouse.wms.dto.InventoryDTO;
-import com.warehouse.wms.exception.InsufficientStockException;
+import com.warehouse.wms.dto.ReconciliationMismatchDTO;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.model.Inventory;
 import com.warehouse.wms.model.Item;
@@ -11,6 +11,7 @@ import com.warehouse.wms.repository.InventoryRepository;
 import com.warehouse.wms.repository.ItemRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
 import com.warehouse.wms.repository.ZoneRepository;
+import com.warehouse.wms.service.InventoryLedgerService.LedgerRef;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -33,6 +34,7 @@ public class InventoryService {
     private final ItemRepository itemRepository;
     private final WarehouseRepository warehouseRepository;
     private final ZoneRepository zoneRepository;
+    private final InventoryLedgerService inventoryLedgerService;
     private final ModelMapper modelMapper;
 
     @Cacheable(value = "inventory", key = "#id")
@@ -92,12 +94,17 @@ public class InventoryService {
         inventory.setItem(item);
         inventory.setWarehouse(warehouse);
         inventory.setZone(zone);
-        inventory.setQuantity(inventoryDTO.getQuantity());
-        inventory.setReservedQuantity(inventoryDTO.getReservedQuantity() != null ?
-                inventoryDTO.getReservedQuantity() : 0);
+        // Starts empty; the opening stock and reservation go through the ledger
+        inventory.setQuantity(0);
+        inventory.setReservedQuantity(0);
         inventory.setReorderPoint(inventoryDTO.getReorderPoint());
 
         Inventory savedInventory = inventoryRepository.save(inventory);
+        inventoryLedgerService.adjust(savedInventory.getId(), inventoryDTO.getQuantity(), "INITIAL", LedgerRef.NONE);
+        int reserved = inventoryDTO.getReservedQuantity() != null ? inventoryDTO.getReservedQuantity() : 0;
+        if (reserved > 0) {
+            inventoryLedgerService.allocate(savedInventory.getId(), reserved, LedgerRef.NONE);
+        }
         log.info("Inventory created with id: {}", savedInventory.getId());
         return convertToDTO(savedInventory);
     }
@@ -106,12 +113,20 @@ public class InventoryService {
     public InventoryDTO updateInventory(Long id, InventoryDTO inventoryDTO) {
         log.info("Updating inventory with id: {}", id);
 
-        Inventory inventory = inventoryRepository.findById(id)
+        Inventory inventory = inventoryRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
 
-        inventory.setQuantity(inventoryDTO.getQuantity());
-        inventory.setReservedQuantity(inventoryDTO.getReservedQuantity() != null ?
-                inventoryDTO.getReservedQuantity() : 0);
+        // The requested absolute values become ledger entries: release first, then adjust, then reserve
+        int newReserved = inventoryDTO.getReservedQuantity() != null ? inventoryDTO.getReservedQuantity() : 0;
+        int reservedDelta = newReserved - inventory.getReservedQuantity();
+        int quantityDelta = inventoryDTO.getQuantity() - inventory.getQuantity();
+        if (reservedDelta < 0) {
+            inventoryLedgerService.deallocate(id, -reservedDelta, LedgerRef.NONE);
+        }
+        inventoryLedgerService.adjust(id, quantityDelta, "MANUAL_UPDATE", LedgerRef.NONE);
+        if (reservedDelta > 0) {
+            inventoryLedgerService.allocate(id, reservedDelta, LedgerRef.NONE);
+        }
         inventory.setReorderPoint(inventoryDTO.getReorderPoint());
 
         if (inventoryDTO.getZoneId() != null) {
@@ -126,55 +141,70 @@ public class InventoryService {
     }
 
     @CacheEvict(value = "inventory", allEntries = true)
-    public InventoryDTO adjustStock(Long id, Integer adjustment, String reason) {
+    public InventoryDTO adjustStock(Long id, Integer adjustment, String reason, String idempotencyKey) {
         log.info("Adjusting stock for inventory id: {} by {}", id, adjustment);
-
-        Inventory inventory = inventoryRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
-
-        Integer newQuantity = inventory.getQuantity() + adjustment;
-        if (newQuantity < inventory.getReservedQuantity()) {
-            throw new InsufficientStockException("Insufficient stock");
+        if (isRepeatedRequest(idempotencyKey)) {
+            return currentState(id);
         }
 
-        inventory.setQuantity(newQuantity);
+        Inventory inventory = inventoryLedgerService.adjust(id, adjustment, reason,
+                new LedgerRef(null, null, idempotencyKey));
         inventory.setLastStockCount(LocalDateTime.now());
 
-        Inventory updatedInventory = inventoryRepository.save(inventory);
-        log.info("Stock adjusted. New quantity: {}", newQuantity);
-        return convertToDTO(updatedInventory);
+        log.info("Stock adjusted. New quantity: {}", inventory.getQuantity());
+        return convertToDTO(inventory);
     }
 
     @CacheEvict(value = "inventory", allEntries = true)
-    public InventoryDTO reserveStock(Long id, Integer quantity) {
+    public InventoryDTO reserveStock(Long id, Integer quantity, String idempotencyKey) {
         log.info("Reserving {} units for inventory id: {}", quantity, id);
-
-        Inventory inventory = inventoryRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
-
-        if (inventory.getAvailableQuantity() < quantity) {
-            throw new InsufficientStockException("Insufficient available stock");
+        if (isRepeatedRequest(idempotencyKey)) {
+            return currentState(id);
         }
 
-        inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
+        Inventory inventory = inventoryLedgerService.allocate(id, quantity, new LedgerRef(null, null, idempotencyKey));
 
-        Inventory updatedInventory = inventoryRepository.save(inventory);
-        log.info("Stock reserved. Available quantity: {}", updatedInventory.getAvailableQuantity());
-        return convertToDTO(updatedInventory);
+        log.info("Stock reserved. Reserved quantity: {}", inventory.getReservedQuantity());
+        return convertToDTO(inventory);
     }
 
     @CacheEvict(value = "inventory", key = "#id")
     public void deleteInventory(Long id) {
         log.info("Deleting inventory with id: {}", id);
-        if (!inventoryRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Inventory not found");
+        Inventory inventory = inventoryRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
+
+        // Close the row out in the ledger so it still reconciles after the row is gone
+        if (inventory.getReservedQuantity() > 0) {
+            inventoryLedgerService.deallocate(id, inventory.getReservedQuantity(), LedgerRef.NONE);
         }
-        inventoryRepository.deleteById(id);
+        inventoryLedgerService.adjust(id, -inventory.getQuantity(), "RECORD_DELETED", LedgerRef.NONE);
+        inventoryRepository.delete(inventory);
         log.info("Inventory deleted successfully");
     }
 
     public Long getTotalInventoryByWarehouse(Long warehouseId) {
         return inventoryRepository.getTotalInventoryByWarehouse(warehouseId);
+    }
+
+    public List<ReconciliationMismatchDTO> getReconciliationMismatches() {
+        log.info("Reconciling the inventory ledger with balances");
+        return inventoryLedgerService.findMismatches();
+    }
+
+    // Claims the key in this transaction; a repeated key means the request already ran and must change nothing
+    private boolean isRepeatedRequest(String idempotencyKey) {
+        if (idempotencyKey == null || inventoryLedgerService.claimIdempotencyKey(idempotencyKey)) {
+            return false;
+        }
+        log.info("Idempotency-Key {} already processed; returning current state", idempotencyKey);
+        return true;
+    }
+
+    private InventoryDTO currentState(Long id) {
+        return inventoryRepository.findById(id)
+                .map(this::convertToDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found"));
     }
 
     private InventoryDTO convertToDTO(Inventory inventory) {

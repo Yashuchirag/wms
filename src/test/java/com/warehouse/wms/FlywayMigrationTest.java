@@ -28,7 +28,7 @@ class FlywayMigrationTest {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class);
 
-        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9"), versions);
+        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), versions);
     }
 
     @Test
@@ -109,5 +109,51 @@ class FlywayMigrationTest {
 
         assertEquals(0, jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM locations WHERE warehouse_id = ?", Integer.class, warehouseId));
+    }
+
+    @Test
+    void ledgerIsPartitionedByMonthWithADefault() {
+        List<String> partitions = jdbcTemplate.queryForList(
+                "SELECT c.relname FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid "
+                        + "WHERE i.inhparent = 'inventory_txn'::regclass ORDER BY c.relname", String.class);
+        String thisMonth = jdbcTemplate.queryForObject("SELECT to_char(CURRENT_DATE, 'YYYY_MM')", String.class);
+
+        assertEquals(4, partitions.size());
+        assertTrue(partitions.contains("inventory_txn_" + thisMonth));
+        assertTrue(partitions.contains("inventory_txn_default"));
+    }
+
+    @Test
+    void openingBalancesReconcileWithSeededStock() {
+        // Seeded inventory rows are never modified by tests, so items 1 to 5 must balance exactly
+        Integer mismatches = jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM inventory i
+                WHERE i.item_id <= 5 AND (
+                    i.quantity <> (SELECT COALESCE(SUM(t.qty), 0) FROM inventory_txn t
+                                   WHERE t.item_id = i.item_id AND t.warehouse_id = i.warehouse_id
+                                     AND t.txn_type = 'ADJUST_IN' AND t.reason_code = 'OPENING_BALANCE')
+                    OR i.reserved_quantity <> (SELECT COALESCE(SUM(t.qty), 0) FROM inventory_txn t
+                                   WHERE t.item_id = i.item_id AND t.warehouse_id = i.warehouse_id
+                                     AND t.txn_type = 'ALLOCATE' AND t.reason_code = 'OPENING_BALANCE'))
+                """, Integer.class);
+
+        assertEquals(0, mismatches);
+    }
+
+    @Test
+    void ledgerQuantityMustBePositive() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO inventory_txn (warehouse_id, txn_type, item_id, qty) VALUES (1, 'RECEIPT', 1, 0)"));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO inventory_txn (warehouse_id, txn_type, item_id, qty) VALUES (1, 'TELEPORT', 1, 1)"));
+    }
+
+    @Test
+    void everyWarehouseHasAReceivingLocation() {
+        Integer warehousesWithout = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM warehouses w WHERE NOT EXISTS (SELECT 1 FROM locations l "
+                        + "WHERE l.warehouse_id = w.id AND l.type = 'RECEIVING')", Integer.class);
+
+        assertEquals(0, warehousesWithout);
     }
 }
