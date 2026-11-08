@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phase C of `WMS_IMPLEMENTATION_PLAN.md` (inventory ledger, V10) is in progress on branch `feat/phase-c-inventory-ledger`, cut from `main` at `c7619d9` (Phases A and B and the README update are merged). The user chose a new RECEIVED shipment status for inbound receipts. Phase C was merged into `main` through PR #7 (https://github.com/Yashuchirag/wms/pull/7) with a merge commit, so `main` now holds Phases A to C. Phase D (outbound orders and allocation, V11 and V12) is in progress on `feat/phase-d-orders-allocation`, cut from `main` at `15e9597`. Phase D is implemented and committed on that branch, not pushed. Phase E (task engine, V13) is implemented and committed on `feat/phase-e-task-engine`, stacked on the Phase D branch because pushing Phase D was blocked by the tool's permission check; nothing is pushed. Next: the user pushes or approves pushing Phase D, merges its PR, then Phase E's PR (rebase or retarget onto `main` once D is merged). Do not start Phase F (transactional outbox, V14) until the user says so.
+Phase C of `WMS_IMPLEMENTATION_PLAN.md` (inventory ledger, V10) is in progress on branch `feat/phase-c-inventory-ledger`, cut from `main` at `c7619d9` (Phases A and B and the README update are merged). The user chose a new RECEIVED shipment status for inbound receipts. Phase C was merged into `main` through PR #7 (https://github.com/Yashuchirag/wms/pull/7) with a merge commit, so `main` now holds Phases A to C. Phase D (outbound orders and allocation, V11 and V12) is in progress on `feat/phase-d-orders-allocation`, cut from `main` at `15e9597`. Phase D is implemented and committed on that branch, not pushed. Phase E (task engine, V13) was built on `feat/phase-e-task-engine`, stacked on the Phase D branch. Phase D was merged into `main` through PR #8 (`c4ea6ee`), and Phase E through PR #9, both with merge commits, so `main` now holds Phases A to E. Do not start Phase F (transactional outbox, V14) until the user says so.
 
 Earlier: The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
@@ -58,9 +58,9 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 | Phase C: push | DONE |
 | Phase C: open PR #7 and merge | DONE |
 | Phase D: outbound orders and allocation (V11, V12) | DONE (committed, not pushed) |
-| Phase D: push, PR and merge | TODO (waiting for the user; an attempted push was blocked by the permission check) |
-| Phase E: task engine (V13), stacked on Phase D | DONE (committed, not pushed) |
-| Phase E: push, PR and merge (after Phase D) | TODO (waiting for the user) |
+| Phase D: push, PR and merge | DONE (PR #8, `c4ea6ee`) |
+| Phase E: task engine (V13), stacked on Phase D | DONE |
+| Phase E: push, PR #9 (stacked), retarget to `main` and merge | DONE |
 
 ## 5. Environment notes
 
@@ -229,3 +229,4 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 - Mutation checks: dropping only `SKIP LOCKED` still passed (see section 6); dropping the row lock from the claim made `TaskConcurrencyTest` fail with 5 distinct tasks for 20 callers. Both were restored.
 - Verification: `clean verify` passes with 68 tests in one shared context. `docker build -t wms:phase-e .` succeeds. A `prod` smoke run on a fresh Postgres took an order for 3 of seeded SKU-001 (no bin) through allocate, release, claim and confirm with an Idempotency-Key; the order ended PICKED with 3 picked, a further `/next` returned 204, and reconciliation returned `[]`. The smoke containers were removed.
 - README: release endpoint, Task Management endpoints and confirm payload, error table, tasks table, Picking section, roadmap row E marked Done.
+- At the user's request, pushed both branches, opened PR #8 (Phase D, base `main`) and PR #9 (Phase E, base the Phase D branch), merged #8 with a merge commit (`c4ea6ee`), retargeted #9 to `main` through the REST API, and merged #9 with a merge commit (this entry was written just before that merge).
