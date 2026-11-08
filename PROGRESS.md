@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phase C of `WMS_IMPLEMENTATION_PLAN.md` (inventory ledger, V10) is in progress on branch `feat/phase-c-inventory-ledger`, cut from `main` at `c7619d9` (Phases A and B and the README update are merged). The user chose a new RECEIVED shipment status for inbound receipts. Phase C was merged into `main` through PR #7 (https://github.com/Yashuchirag/wms/pull/7) with a merge commit, so `main` now holds Phases A to C. Phase D (outbound orders and allocation, V11 and V12) is in progress on `feat/phase-d-orders-allocation`, cut from `main` at `15e9597`. Phase D is implemented and committed on that branch, not pushed. Phase E (task engine, V13) was built on `feat/phase-e-task-engine`, stacked on the Phase D branch. Phase D was merged into `main` through PR #8 (`c4ea6ee`), and Phase E through PR #9, both with merge commits, so `main` now holds Phases A to E. Phase F (transactional outbox, V14) is implemented and committed on `feat/phase-f-transactional-outbox`, cut from `main` at `7b106c3`, not pushed. Next: the user reviews it and decides on pushing, a PR and merging. Phase F is the last phase of `WMS_IMPLEMENTATION_PLAN.md`; what comes after it (authentication, Pub/Sub, order shipping and others) is the user's call.
+Phase C of `WMS_IMPLEMENTATION_PLAN.md` (inventory ledger, V10) is in progress on branch `feat/phase-c-inventory-ledger`, cut from `main` at `c7619d9` (Phases A and B and the README update are merged). The user chose a new RECEIVED shipment status for inbound receipts. Phase C was merged into `main` through PR #7 (https://github.com/Yashuchirag/wms/pull/7) with a merge commit, so `main` now holds Phases A to C. Phase D (outbound orders and allocation, V11 and V12) is in progress on `feat/phase-d-orders-allocation`, cut from `main` at `15e9597`. Phase D is implemented and committed on that branch, not pushed. Phase E (task engine, V13) was built on `feat/phase-e-task-engine`, stacked on the Phase D branch. Phase D was merged into `main` through PR #8 (`c4ea6ee`), and Phase E through PR #9, both with merge commits, so `main` now holds Phases A to E. Phase F (transactional outbox, V14) was built on `feat/phase-f-transactional-outbox`, cut from `main` at `7b106c3`, and merged through PR #10 (https://github.com/Yashuchirag/wms/pull/10) with a merge commit, so `main` holds Phases A to F. Phase F is the last phase of `WMS_IMPLEMENTATION_PLAN.md`; what comes after it (authentication, Pub/Sub, order shipping and others) is the user's call.
 
 Earlier: The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
@@ -61,8 +61,8 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 | Phase D: push, PR and merge | DONE (PR #8, `c4ea6ee`) |
 | Phase E: task engine (V13), stacked on Phase D | DONE |
 | Phase E: push, PR #9 (stacked), retarget to `main` and merge | DONE |
-| Phase F: transactional outbox (V14) | DONE (committed, not pushed) |
-| Phase F: push, PR and merge | TODO (waiting for the user) |
+| Phase F: transactional outbox (V14) | DONE |
+| Phase F: push, PR #10 and merge | DONE |
 
 ## 5. Environment notes
 
@@ -246,3 +246,4 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 - Mutation checks: switching the writer to `REQUIRES_NEW` made the rollback test fail (the event survived the rollback); disabling the per-aggregate hold-back made the failure test fail (the later event was tried). Both were restored.
 - Verification: `clean verify` passes with 73 tests in one shared context. `docker build -t wms:phase-f .` succeeds. A `prod` smoke run on a fresh Postgres applied V1 to V14; an order and its allocation wrote `OrderAccepted.v1` and `OrderAllocated.v1`, and the scheduled relay published both within three seconds on the first attempt (logged by `LoggingEventPublisher`). The smoke containers were removed.
 - README: Events section, Event Relay properties, `outbox_events` table, V1 to V14, roadmap row F marked Done.
+- At the user's request, pushed `feat/phase-f-transactional-outbox`, opened PR #10 and merged it into `main` with a merge commit (this entry was written just before the merge).
