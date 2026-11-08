@@ -2,7 +2,7 @@
 
 ## 1. Next action
 
-Phase C of `WMS_IMPLEMENTATION_PLAN.md` (inventory ledger, V10) is in progress on branch `feat/phase-c-inventory-ledger`, cut from `main` at `c7619d9` (Phases A and B and the README update are merged). The user chose a new RECEIVED shipment status for inbound receipts. Phase C is implemented, committed and pushed to `origin/feat/phase-c-inventory-ledger`; no PR yet. Next: the user decides on opening a PR and merging. Do not start Phase D (orders and allocation, V11 and V12) until the user says so.
+Phase C of `WMS_IMPLEMENTATION_PLAN.md` (inventory ledger, V10) is in progress on branch `feat/phase-c-inventory-ledger`, cut from `main` at `c7619d9` (Phases A and B and the README update are merged). The user chose a new RECEIVED shipment status for inbound receipts. Phase C was merged into `main` through PR #7 (https://github.com/Yashuchirag/wms/pull/7) with a merge commit, so `main` now holds Phases A to C. Next: Phase D (outbound orders and allocation, V11 and V12), once the user says to start; cut its branch from `main`. Do not start Phase D (orders and allocation, V11 and V12) until the user says so.
 
 Earlier: The upgrade (PR #1, `8a1865b`) and the credentials change (PR #2, `450bdf9`) are both merged into `main`, and `main` has been merged into `feature/demand-forecasting-pipeline` (`1708f5a`), and then the forecasting branch was merged into `main` via PR #3 (https://github.com/Yashuchirag/wms/pull/3), so `main` now holds the Java app and the `forecasting/` module. `feature/demand-forecasting-pipeline` was kept for further forecasting work. Remaining user follow-ups: rotate the dev DB and pgAdmin passwords (commands in the 2026-10-23 session log) and point the IDE at JDK 25.
 
@@ -56,7 +56,7 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 | Phase B: merge PR #5 | DONE (`998fc84`) |
 | Phase C: inventory ledger (V10) | DONE (committed, not pushed) |
 | Phase C: push | DONE |
-| Phase C: open PR and merge | TODO (waiting for the user) |
+| Phase C: open PR #7 and merge | DONE |
 
 ## 5. Environment notes
 
@@ -193,3 +193,4 @@ That upgrade is finished. The current goal is to implement `WMS_IMPLEMENTATION_P
 - Verification: `clean verify` passes with 50 tests in one shared context. `docker build -t wms:phase-c .` succeeds. A `prod` smoke run on a fresh Postgres applied V1 to V10, reconciliation returned `[]`, the seeded inbound shipment was processed and received into RCV-01, the seeded outbound shipment shipped (item 1 went from 100/10 to 95/5), two reserve calls with the same key reserved 3 once, and reconciliation still returned `[]`. The smoke containers were removed.
 - README: ledger feature, reconciliation endpoint, Idempotency-Key, new tables and rules, inbound and outbound flows, roadmap row C marked Done.
 - At the user's request, pushed `feat/phase-c-inventory-ledger` to origin (no PR opened).
+- At the user's request, opened PR #7 and merged it into `main` with a merge commit (this entry was written just before the merge, as with PR #6).
