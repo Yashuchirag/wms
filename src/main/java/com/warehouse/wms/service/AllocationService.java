@@ -17,7 +17,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -64,7 +66,7 @@ public class AllocationService {
         for (OutboundLine line : order.getLines()) {
             int missing = line.getQtyOrdered() - line.getQtyAllocated();
             if (missing > 0) {
-                missing -= allocateLine(order, line, missing, ref);
+                missing -= allocateLine(order, line, missing, ref).stream().mapToInt(Allocation::getQty).sum();
             }
             complete &= missing == 0;
         }
@@ -89,7 +91,18 @@ public class AllocationService {
                 });
     }
 
-    private int allocateLine(OutboundOrder order, OutboundLine line, int missing, LedgerRef ref) {
+    /**
+     * Allocates up to qty more for a line whose order is already past allocation (a short pick's remainder).
+     * Returns the new allocations, which may cover less than qty.
+     */
+    public List<Allocation> reallocate(OutboundLine line, int qty) {
+        OutboundOrder order = line.getOrder();
+        log.info("Re-allocating {} for order {} line {}", qty, order.getId(), line.getLineNo());
+        return allocateLine(order, line, qty, LedgerRef.of("ORDER", order.getId()));
+    }
+
+    private List<Allocation> allocateLine(OutboundOrder order, OutboundLine line, int missing, LedgerRef ref) {
+        List<Allocation> allocations = new ArrayList<>();
         int allocated = 0;
         while (allocated < missing) {
             // The query is plain SQL, so this transaction's earlier allocations must be flushed for it to see them.
@@ -110,11 +123,11 @@ public class AllocationService {
             allocation.setInventoryId(inventoryId);
             allocation.setQty(take);
             allocation.setStatus(Allocation.AllocationStatus.OPEN);
-            allocationRepository.save(allocation);
+            allocations.add(allocationRepository.save(allocation));
             allocated += take;
         }
 
         line.setQtyAllocated(line.getQtyAllocated() + allocated);
-        return allocated;
+        return allocations;
     }
 }

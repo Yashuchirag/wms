@@ -47,8 +47,14 @@ public class OrderController {
         return ResponseEntity.ok(orderService.allocateOrder(id));
     }
 
+    @PostMapping("/{id}/release")
+    @Operation(summary = "Release order", description = "Create one pick task per allocation of an ALLOCATED order")
+    public ResponseEntity<OrderDTO> releaseOrder(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.releaseOrder(id));
+    }
+
     @PostMapping("/{id}/cancel")
-    @Operation(summary = "Cancel order", description = "Cancel an order before picking starts and release its allocations")
+    @Operation(summary = "Cancel order", description = "Cancel an order before picking starts, release its allocations and cancel its open tasks")
     public ResponseEntity<OrderDTO> cancelOrder(@PathVariable Long id) {
         return ResponseEntity.ok(orderService.cancelOrder(id));
     }

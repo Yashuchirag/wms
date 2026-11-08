@@ -48,6 +48,7 @@ public class OrderService {
     private final WarehouseRepository warehouseRepository;
     private final ItemRepository itemRepository;
     private final AllocationService allocationService;
+    private final TaskService taskService;
     private final JdbcTemplate jdbcTemplate;
     private final JsonMapper jsonMapper;
 
@@ -111,6 +112,18 @@ public class OrderService {
         return convertToDTO(allocationService.allocate(id));
     }
 
+    /** Hands an allocated order to the floor: one PICK task per allocation. */
+    public OrderDTO releaseOrder(Long id) {
+        log.info("Releasing order id: {}", id);
+        OutboundOrder order = orderRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        transition(order, OrderStatus.RELEASED);
+
+        taskService.createPickTasks(order);
+        log.info("Order {} released", id);
+        return convertToDTO(order);
+    }
+
     public OrderDTO cancelOrder(Long id) {
         log.info("Cancelling order id: {}", id);
         OutboundOrder order = orderRepository.findByIdForUpdate(id)
@@ -118,6 +131,7 @@ public class OrderService {
         transition(order, OrderStatus.CANCELLED);
 
         allocationService.releaseOpenAllocations(order);
+        taskService.cancelOpenTasks(id);
         log.info("Order {} cancelled", id);
         return convertToDTO(order);
     }
