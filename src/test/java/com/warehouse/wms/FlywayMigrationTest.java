@@ -28,7 +28,7 @@ class FlywayMigrationTest {
         List<String> versions = jdbcTemplate.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class);
 
-        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"), versions);
+        assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13"), versions);
     }
 
     @Test
@@ -176,5 +176,24 @@ class FlywayMigrationTest {
                 "INSERT INTO outbound_orders (warehouse_id, external_ref, status) VALUES (1, 'BAD-STATUS', 'LOST')"));
         assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
                 "INSERT INTO allocations (line_id, inventory_id, qty) VALUES (1, 1, 0)"));
+    }
+
+    @Test
+    void taskTypeStatusAndQuantitiesAreChecked() {
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO tasks (warehouse_id, type) VALUES (1, 'DANCE')"));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO tasks (warehouse_id, type, status) VALUES (1, 'PICK', 'LOST')"));
+        assertThrows(DataIntegrityViolationException.class, () -> jdbcTemplate.update(
+                "INSERT INTO tasks (warehouse_id, type, qty, qty_confirmed) VALUES (1, 'PICK', 2, 3)"));
+    }
+
+    @Test
+    void everyWarehouseHasAPackLocation() {
+        Integer warehousesWithout = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM warehouses w WHERE NOT EXISTS (SELECT 1 FROM locations l "
+                        + "WHERE l.warehouse_id = w.id AND l.type = 'PACK')", Integer.class);
+
+        assertEquals(0, warehousesWithout);
     }
 }

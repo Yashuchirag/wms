@@ -20,4 +20,9 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
             + "AND l.isActive = true "
             + "ORDER BY l.id LIMIT 1")
     Optional<Location> findReceivingLocation(@Param("warehouseId") Long warehouseId);
+
+    @Query("SELECT l FROM Location l WHERE l.warehouse.id = :warehouseId AND l.type = com.warehouse.wms.model.Location.LocationType.PACK "
+            + "AND l.isActive = true "
+            + "ORDER BY l.id LIMIT 1")
+    Optional<Location> findPackLocation(@Param("warehouseId") Long warehouseId);
 }
